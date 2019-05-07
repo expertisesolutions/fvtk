@@ -7,20 +7,17 @@
 // See http://www.boost.org/libs/foreach for documentation
 //
 
-#ifndef FASTDRAWCXX_OBJECTS_LINE_HH
-#define FASTDRAWCXX_OBJECTS_LINE_HH
+#ifndef FASTDRAW_OUTPUT_VULKAN_DRAW_LINE_HPP
+#define FASTDRAW_OUTPUT_VULKAN_DRAW_LINE_HPP
 
-#include <fastdraw/point.hpp>
+#include <fastdraw/object/line.hpp>
 
-namespace fastdraw { namespace object {
+namespace fastdraw { namespace output {
 
-template <typename Coord, typename Color>
-struct line
+template <typename Coord, typename Output>
+void draw (line<Coord> const& l, Output&&)
 {
-  typedef point<Coord> point_type;
-  point_type cur_p1, cur_p2;
-  Color color;
-};
+}
   
 } }
 

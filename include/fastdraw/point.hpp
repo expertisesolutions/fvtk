@@ -10,7 +10,7 @@
 #ifndef FASTDRAW_POINT_HPP
 #define FASTDRAW_POINT_HPP
 
-namespace fastdraw { namespace object {
+namespace fastdraw {
 
 template <typename T>
 struct point
@@ -18,6 +18,6 @@ struct point
   T x, y;
 };
     
-} }
+}
 
 #endif

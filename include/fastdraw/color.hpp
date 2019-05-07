@@ -7,21 +7,17 @@
 // See http://www.boost.org/libs/foreach for documentation
 //
 
-#ifndef FASTDRAWCXX_OBJECTS_LINE_HH
-#define FASTDRAWCXX_OBJECTS_LINE_HH
+#ifndef FASTDRAW_COLOR_HPP
+#define FASTDRAW_COLOR_HPP
 
-#include <fastdraw/point.hpp>
+namespace fastdraw { namespace color {
 
-namespace fastdraw { namespace object {
-
-template <typename Coord, typename Color>
-struct line
+template <typename Channel>
+struct color_rgb
 {
-  typedef point<Coord> point_type;
-  point_type cur_p1, cur_p2;
-  Color color;
+  Channel r, g, b;
 };
-  
+    
 } }
 
 #endif

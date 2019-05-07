@@ -1,27 +1,28 @@
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2018 Felipe Magno de Almeida.
+// Copyright 2019 Felipe Magno de Almeida.
 // Distributed under the Boost Software License, Version 1.0. (See
 // accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 // See http://www.boost.org/libs/foreach for documentation
 //
 
-#ifndef FASTDRAWCXX_OBJECTS_LINE_HH
-#define FASTDRAWCXX_OBJECTS_LINE_HH
+#ifndef FASTDRAW_OUTPUT_VULKAN_SHADER_LOADER_HPP
+#define FASTDRAW_OUTPUT_VULKAN_SHADER_LOADER_HPP
 
-#include <fastdraw/point.hpp>
+#include <fastdraw/output/vulkan/shaders.hpp>
 
-namespace fastdraw { namespace object {
+#include <vector>
+#include <stdexcept>
+#include <filesystem>
 
-template <typename Coord, typename Color>
-struct line
+namespace fastdraw { namespace output {
+
+struct shader_loader
 {
-  typedef point<Coord> point_type;
-  point_type cur_p1, cur_p2;
-  Color color;
-};
   
+};
+
 } }
 
 #endif

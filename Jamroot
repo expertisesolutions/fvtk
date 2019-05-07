@@ -12,3 +12,4 @@ alias testsuite :
 # [ run tests/test_gl1.cpp fastdraw x11 gl glu glew ]
 # [ run tests/opengl1.cpp fastdraw x11 gl glu glew glfw ]
  [ run tests/text_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /glfw//glfw /hb//hb /ft2//ft2 ]
+ ;
