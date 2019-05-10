@@ -16,13 +16,13 @@
 #include <stdexcept>
 #include <filesystem>
 
-namespace fastdraw { namespace output {
+namespace fastdraw { namespace output { namespace vulkan {
 
 struct shader_loader
 {
   
 };
 
-} }
+} } }
 
 #endif

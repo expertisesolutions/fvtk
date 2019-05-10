@@ -15,12 +15,13 @@
 #include <fastdraw/output/vulkan/vulkan_draw_info.hpp>
 #include <fastdraw/output/vulkan/add_triangle.hpp>
 #include <fastdraw/output/vulkan/add_box.hpp>
+#include <fastdraw/output/vulkan/add_text.hpp>
 #include <fastdraw/scene.hpp>
 
 #include <vector>
 #include <iostream>
 
-namespace fastdraw { namespace output {
+namespace fastdraw { namespace output { namespace vulkan {
 
 template <typename Coord, typename Point, typename Color, typename WindowingBase = x11_base>
 struct vulkan_output : vulkan_output_info<WindowingBase>
@@ -48,13 +49,19 @@ struct create_output_specific_object_visitor
   
   vulkan_draw_info operator()(object::fill_triangle<Point, Color> const& triangle)
   {
-    auto info = output::create_output_specific_object (*output, triangle);
+    auto info = vulkan::create_output_specific_object (*output, triangle);
+    output->object_outputs.push_back({index, {info}});
+    return info;
+  }
+  vulkan_draw_info operator()(object::fill_text<Point, std::string, Color> const& text)
+  {
+    auto info = vulkan::create_output_specific_object (*output, text);
     output->object_outputs.push_back({index, {info}});
     return info;
   }
   vulkan_draw_info operator()(object::fill_box<Point, Color> const& box)
   {
-    return output::create_output_specific_object (*output, box);
+    return vulkan::create_output_specific_object (*output, box);
   }
 };
 
@@ -70,23 +77,30 @@ struct replace_visitor
   {
     assert(output->object_outputs.size() > index);
     assert(!output->object_outputs[index].draw_infos.empty());
-    return output::replace_push_constants (output->object_outputs[index].draw_infos[0], triangle);
+    return vulkan::replace_push_constants (output->object_outputs[index].draw_infos[0], triangle);
+  }
+  vulkan_draw_info operator()(object::fill_text<Point, std::string, Color> const& text)
+  {
+    // assert(output->object_outputs.size() > index);
+    // assert(!output->object_outputs[index].draw_infos.empty());
+    // return vulkan::replace_push_constants (output->object_outputs[index].draw_infos[0], triangle);
+    throw -1.0;
   }
   vulkan_draw_info operator()(object::fill_box<Point, Color> const& box)
   {
-    //return output::create_output_specific_object (*output, box);
+    //return vulkan::create_output_specific_object (*output, box);
     throw -1;
     return {};
   }
 };
     
 template <typename Coord, typename Point, typename Color, template <typename> class Container, typename WindowingBase>
-output::vulkan_output<Coord, Point, Color, WindowingBase>
+vulkan::vulkan_output<Coord, Point, Color, WindowingBase>
 output (fastdraw::scene<Coord, Point, Color, Container>& scene
         , fastdraw::scene_difference<Coord, Point, Color, Container>& scene_diff
-        , output::vulkan_output<Coord, Point, Color, WindowingBase>& output)
+        , vulkan::vulkan_output<Coord, Point, Color, WindowingBase>& output)
 {
-  typedef output::vulkan_output<Coord, Point, Color, WindowingBase> output_type;
+  typedef vulkan::vulkan_output<Coord, Point, Color, WindowingBase> output_type;
   typedef fastdraw::scene_difference<Coord, Point, Color, Container> scene_diff_type;
   using insert = typename scene_diff_type::insert;
   using replace = typename scene_diff_type::replace;
@@ -124,7 +138,7 @@ output (fastdraw::scene<Coord, Point, Color, Container>& scene
   return diff_output;
 }
 
-} }
+} } }
   
 
 #endif

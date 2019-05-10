@@ -12,10 +12,13 @@
 
 #include <fastdraw/output/vulkan/vulkan_draw_info.hpp>
 
-namespace fastdraw { namespace output {
+namespace fastdraw { namespace output { namespace vulkan {
 
 void draw (vulkan_draw_info const& info, VkCommandBuffer commandBuffer)
 {
+  if (!info.pipeline)
+    return;
+  
   if (info.push_constants.size())
   {
     vkCmdPushConstants(commandBuffer,
@@ -30,6 +33,6 @@ void draw (vulkan_draw_info const& info, VkCommandBuffer commandBuffer)
   vkCmdDraw(commandBuffer, info.vertexCount, info.instanceCount, info.firstVertex, info.firstInstance);
 }
     
-} }
+} } }
 
 #endif

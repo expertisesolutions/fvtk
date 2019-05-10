@@ -15,7 +15,7 @@
 
 #include <vulkan/vulkan_core.h>
 
-namespace fastdraw { namespace output {
+namespace fastdraw { namespace output { namespace vulkan {
 
 template <typename WindowingBase>
 struct vulkan_output_info : WindowingBase
@@ -29,7 +29,7 @@ struct vulkan_output_info : WindowingBase
 };
 
 
-} }
-  
+} } }
+ 
 
 #endif

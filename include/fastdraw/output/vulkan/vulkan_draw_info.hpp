@@ -14,7 +14,7 @@
 #include <vector>
 #include <iostream>
 
-namespace fastdraw { namespace output {
+namespace fastdraw { namespace output { namespace vulkan {
 
 struct vulkan_draw_info
 {
@@ -30,7 +30,7 @@ struct vulkan_draw_info
   std::vector<char> push_constants;
 };
 
-} }
+} } }
   
 
 #endif

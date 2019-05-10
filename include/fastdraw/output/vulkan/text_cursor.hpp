@@ -16,7 +16,7 @@
 #include <vector>
 #include <stdexcept>
 
-namespace fastdraw { namespace output {
+namespace fastdraw { namespace output { namespace vulkan {
 
 template <typename Coord, typename WindowingBase, typename Color>
 vulkan_pipeline create_output_specific_object (vulkan_output<Coord, WindowingBase>& output, object::line<Coord, Color> const& line
@@ -264,7 +264,7 @@ vulkan_pipeline create_output_specific_object (vulkan_output<Coord, WindowingBas
     return {graphicsPipeline, {}, output.renderpass, 3, 1, 0, 0};
 }
 
-} }
+} } }
   
 
 #endif

@@ -18,7 +18,7 @@
 #include <stdexcept>
 #include <cstring>
 
-namespace fastdraw { namespace output {
+namespace fastdraw { namespace output { namespace vulkan {
 
 template <typename Point, typename Color, typename WindowingBase>
 vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase>& output, object::fill_triangle<Point, Color> const& triangle
@@ -192,12 +192,24 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
 
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
+    VkVertexInputBindingDescription bindingDescription = {};
+    bindingDescription.binding = 0;
+    bindingDescription.stride = sizeof(float)*3;
+    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    VkVertexInputAttributeDescription attributeDescription = {};
+    attributeDescription.binding = 0;
+    attributeDescription.location = 0;
+    attributeDescription.format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescription.offset = 0;
+
+    
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.pVertexBindingDescriptions = nullptr; // Optional
-    vertexInputInfo.vertexAttributeDescriptionCount = 0;
-    vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Optional
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription; // Optional
+    vertexInputInfo.vertexAttributeDescriptionCount = 1;
+    vertexInputInfo.pVertexAttributeDescriptions = &attributeDescription; // Optional
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -234,14 +246,14 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
         , triangle.p3.x, triangle.p3.y, 0.0f, triangle.fill_color.b
         , /*triangle.fill_color.a*/0.0f});
     
-    VkPushConstantRange pushConstantRange;
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    pushConstantRange.offset = 0;
-    pushConstantRange.size = sizeof(float)*values.size();
+    // VkPushConstantRange pushConstantRange;
+    // pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    // pushConstantRange.offset = 0;
+    // pushConstantRange.size = sizeof(float)*values.size();
 
-    std::vector<char> push_constants(sizeof(float)*values.size());
+    // std::vector<char> push_constants(sizeof(float)*values.size());
 
-    std::memcpy(push_constants.data(), values.data(), push_constants.size());
+    // std::memcpy(push_constants.data(), values.data(), push_constants.size());
 
     // VkDescriptorSetLayout descriptorSetLayout;    
     VkPipelineLayout pipelineLayout;
@@ -259,8 +271,8 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     //pipelineLayoutInfo.setLayoutCount = 1; // Optional
     //pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // Optional
-    pipelineLayoutInfo.pushConstantRangeCount = 1; // Optional
-    pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange; // Optional
+    // pipelineLayoutInfo.pushConstantRangeCount = 1; // Optional
+    // pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange; // Optional
 
     if (vkCreatePipelineLayout(output.device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
       throw std::runtime_error("failed to create pipeline layout!");
@@ -290,7 +302,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
       throw std::runtime_error("failed to create graphics pipeline!");
     }
 
-    return {graphicsPipeline, pipelineLayout, output.renderpass, 3, 1, 0, 0, push_constants};
+    return {graphicsPipeline, pipelineLayout, output.renderpass, 3, 1, 0, 0, /*push_constants*/{}};
 }
 
 template <typename Point, typename Color>
@@ -307,7 +319,7 @@ vulkan_draw_info replace_push_constants (vulkan_draw_info& info, object::fill_tr
     return info;
 }
 
-} }
+} } }
   
 
 #endif

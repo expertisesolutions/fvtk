@@ -5,6 +5,7 @@
 #include <fastdraw/color.hpp>
 #include <fastdraw/output/vulkan/shader_loader.hpp>
 #include <fastdraw/output/vulkan/vulkan_draw.hpp>
+#include <fastdraw/output/vulkan/add_text.hpp>
 
 #include <iostream>
 #include <cassert>
@@ -32,7 +33,7 @@ typedef fastdraw::color::color_rgb<color_channel_type> color_type;
 
 uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, VkPhysicalDevice physicalDevice);
 
-void create_vertex_buffer (VkDevice device, std::size_t size, VkPhysicalDevice physicalDevice)
+std::pair<VkBuffer, VkDeviceMemory> create_vertex_buffer (VkDevice device, std::size_t size, VkPhysicalDevice physicalDevice)
 {
   VkBuffer vertexBuffer;
   VkDeviceMemory vertexBufferMemory;
@@ -59,6 +60,8 @@ void create_vertex_buffer (VkDevice device, std::size_t size, VkPhysicalDevice p
     throw std::runtime_error("failed to allocate vertex buffer memory!");
   }
   vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+
+  return {vertexBuffer, vertexBufferMemory};
 }
 
 uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties
@@ -73,13 +76,12 @@ uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties
   }
   
   throw std::runtime_error("failed to find suitable memory type!");
-
 }
 
-fastdraw::output::vulkan_output<coord_type, point_type, color_type> on_animation
+fastdraw::output::vulkan::vulkan_output<coord_type, point_type, color_type> on_animation
 (fastdraw::scene<float, point_type, color_type>& scene
  , fastdraw::scene_difference<float, point_type, color_type>& scene_diff
- , fastdraw::output::vulkan_output<coord_type, point_type, color_type>& difference_output)
+ , fastdraw::output::vulkan::vulkan_output<coord_type, point_type, color_type>& difference_output)
 {
   using triangle_type = fastdraw::object::fill_triangle<point_type, color_type>;
 
@@ -150,13 +152,12 @@ void record_command_buffer(VkRenderPass renderPass, std::vector<VkCommandBuffer>
                            , int imageIndex
                            , std::vector<VkFramebuffer>& swapChainFramebuffers
                            , VkExtent2D swapChainExtent
-                           , fastdraw::output::vulkan_output<coord_type, point_type, color_type>& diff_output)
+                           , fastdraw::output::vulkan::vulkan_output<coord_type, point_type, color_type>& diff_output
+                           , VkBuffer vertexBuffer)
 {
         {
           VkCommandBufferBeginInfo beginInfo = {};
           beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-          //beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-          beginInfo.pInheritanceInfo = nullptr; // Optional
 
           if (vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo) != VK_SUCCESS) {
             throw std::runtime_error("failed to begin recording command buffer!");
@@ -170,13 +171,17 @@ void record_command_buffer(VkRenderPass renderPass, std::vector<VkCommandBuffer>
           renderPassInfo.renderArea.extent = swapChainExtent;
 
           vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+          VkBuffer vertexBuffers[] = {vertexBuffer};
+          VkDeviceSize offsets[] = {0};
+          vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
 
           for (auto&& object_output : diff_output.object_outputs)
           {
             for (auto&& pipeline : object_output.draw_infos)
             {
               // for (int i = 0; i != 500; ++i)
-                fastdraw::output::draw (pipeline, commandBuffers[imageIndex]);
+                fastdraw::output::vulkan::draw (pipeline, commandBuffers[imageIndex]);
+
             }
           }
         
@@ -238,14 +243,14 @@ int main()
 
   std::memset(&cinfo, 0, sizeof(cinfo));
 
-  // std::array<const char*, 1> layers({"VK_LAYER_KHRONOS_validation"});
+  std::array<const char*, 1> layers({"VK_LAYER_KHRONOS_validation"});
   
   cinfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
   cinfo.pNext = NULL;
   cinfo.flags = 0;
   cinfo.pApplicationInfo = &ApplicationInfo;
-  // cinfo.enabledLayerCount = layers.size();
-  // cinfo.ppEnabledLayerNames = &layers[0];
+  cinfo.enabledLayerCount = layers.size();
+  cinfo.ppEnabledLayerNames = &layers[0];
   cinfo.enabledExtensionCount = extensions.size();;
   cinfo.ppEnabledExtensionNames = &extensions[0];
 
@@ -536,12 +541,13 @@ int main()
     fastdraw::scene<float, point_type, color_type> scene;
     fastdraw::scene_difference<float, point_type, color_type> scene_diff;
     typedef fastdraw::object::fill_triangle<point_type, color_type> triangle_type;
+    typedef fastdraw::object::fill_text<point_type, std::string, color_type> text_type;
 
     color_type red {1.0, 0.0, 0.0}, blue {0.0, 0.0, 1.0};
     fastdraw::object::fill_triangle<point_type, color_type> triangle{{{0.0, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, red};
-    fastdraw::object::fill_triangle<point_type, color_type> triangle2{{{0.0, -0.25}, {0.25, 0.25}, {-0.25, 0.25}}, blue};
+    // fastdraw::object::fill_triangle<point_type, color_type> triangle2{{{0.0, -0.25}, {0.25, 0.25}, {-0.25, 0.25}}, blue};
 
-    push_back(scene, scene_diff, triangle, triangle2
+    push_back(scene, scene_diff, triangle, text_type {{{0.0, 0.0}, {0.25, 0.25}, "/usr/share/fonts/TTF/DejaVuSans.ttf", "Hello World"}, blue} /*, triangle2
               , triangle_type{{{0.1, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
               , triangle_type{{{0.0, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
               , triangle_type{{{0.1, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
@@ -625,15 +631,15 @@ int main()
               , triangle_type{{{0.79, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
               , triangle_type{{{0.80, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
               , triangle_type{{{0.81, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
-              , triangle_type{{{0.82, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue});
+              , triangle_type{{{0.82, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}*/);
 
     std::cout << "diff size " << scene_diff.operations.size() << std::endl;
     
-    fastdraw::output::vulkan_output<coord_type, point_type
+    fastdraw::output::vulkan::vulkan_output<coord_type, point_type
                                     , color_type> voutput {{{}, graphicsQueue, presentQueue, vertShaderModule, fragShaderModule
                                                             , swapChainImageFormat, swapChainExtent, device, renderPass}};
 
-    auto intermediate = fastdraw::output::output (scene, scene_diff, voutput);
+    auto intermediate = fastdraw::output::vulkan::output (scene, scene_diff, voutput);
 
     merge_scene_difference (scene, scene_diff);
     scene_diff.clear();
@@ -655,6 +661,22 @@ int main()
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     if (vkCreateFence (device, &fenceInfo, nullptr, &executionFinishedFence) != VK_SUCCESS)
       throw std::runtime_error("failed to create semaphores!");
+
+    VkBuffer vertexBuffer;
+    VkDeviceMemory vertexBufferMemory;
+    std::tie(vertexBuffer, vertexBufferMemory) = create_vertex_buffer (device, sizeof(float)*16, physicalDevice);
+
+    void* data;
+    vkMapMemory(device, vertexBufferMemory, 0, sizeof(float)*16, 0, &data);
+    
+    const float vertices[] = { triangle.p1.x, triangle.p1.y, 0.0f
+                               , triangle.p2.x, triangle.p2.y, 0.0f
+                               , triangle.p3.x, triangle.p3.y, 0.0f };
+
+    std::memcpy(data, vertices, sizeof(vertices));
+
+    vkUnmapMemory(device, vertexBufferMemory);
+    
 
     while(1) {
       bool check = XCheckWindowEvent(dpy, win, KeyPressMask | ExposureMask, &xev);
@@ -689,8 +711,8 @@ int main()
         auto before_draw = std::chrono::high_resolution_clock::now();
         
         // std::cout << "doing animation " << imageIndex << std::endl;
-        //fastdraw::output::vulkan_output<coord_type, point_type, color_type> output = voutput;
-        fastdraw::output::vulkan_output<coord_type, point_type, color_type> diff_output;
+        //fastdraw::output::vulkan::vulkan_output<coord_type, point_type, color_type> output = voutput;
+        fastdraw::output::vulkan::vulkan_output<coord_type, point_type, color_type> diff_output;
         static bool first = true;
         //if (first)
           {
@@ -705,7 +727,8 @@ int main()
         static bool recorded[2] = {false, false};
         // if (!recorded[imageIndex])
           {
-            record_command_buffer(renderPass, commandBuffers, imageIndex, swapChainFramebuffers, swapChainExtent, diff_output);
+            record_command_buffer(renderPass, commandBuffers, imageIndex, swapChainFramebuffers, swapChainExtent, diff_output
+                                  , vertexBuffer);
             recorded[imageIndex] = true;
           }
         

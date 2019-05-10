@@ -16,7 +16,7 @@
 #include <vector>
 #include <stdexcept>
 
-namespace fastdraw { namespace output {
+namespace fastdraw { namespace output { namespace vulkan {
 
 template <typename Point, typename Color, typename WindowingBase>
 vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase>& output, object::fill_box<Point, Color> const& box
@@ -265,7 +265,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
   throw std::runtime_error("");
 }
 
-} }
+} } }
   
 
 #endif

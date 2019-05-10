@@ -10,7 +10,7 @@
 #ifndef FASTDRAW_OUTPUT_VULKAN_ADD_BOX_HPP
 #define FASTDRAW_OUTPUT_VULKAN_ADD_BOX_HPP
 
-namespace fastdraw { namespace output {
+namespace fastdraw { namespace output { namespace vulkan {
 
 enum class fragment_shaders
 {
@@ -23,6 +23,6 @@ enum class vertice_shaders
  triangle_bind
 };
     
-} }
+} } }
 
 #endif

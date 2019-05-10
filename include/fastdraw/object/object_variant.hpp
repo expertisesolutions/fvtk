@@ -14,6 +14,7 @@
 #include <fastdraw/object/image.hpp>
 #include <fastdraw/object/line.hpp>
 #include <fastdraw/object/triangle.hpp>
+#include <fastdraw/object/text.hpp>
 
 #include <variant>
 
@@ -24,6 +25,7 @@ struct object_variant
 {
   typedef std::variant<fill_box<Point, Color>
                        , fill_triangle<Point, Color>
+                       , fill_text<Point, std::string, Color>
                        > variant_type;
 
   variant_type object;
