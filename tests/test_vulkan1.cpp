@@ -152,8 +152,8 @@ void record_command_buffer(VkRenderPass renderPass, std::vector<VkCommandBuffer>
                            , int imageIndex
                            , std::vector<VkFramebuffer>& swapChainFramebuffers
                            , VkExtent2D swapChainExtent
-                           , fastdraw::output::vulkan::vulkan_output<coord_type, point_type, color_type>& diff_output
-                           , VkBuffer vertexBuffer)
+                           , fastdraw::output::vulkan::vulkan_output<coord_type, point_type, color_type>& diff_output)
+                           // , VkBuffer vertexBuffer)
 {
         {
           VkCommandBufferBeginInfo beginInfo = {};
@@ -171,14 +171,14 @@ void record_command_buffer(VkRenderPass renderPass, std::vector<VkCommandBuffer>
           renderPassInfo.renderArea.extent = swapChainExtent;
 
           vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-          VkBuffer vertexBuffers[] = {vertexBuffer};
-          VkDeviceSize offsets[] = {0};
-          vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
 
           for (auto&& object_output : diff_output.object_outputs)
           {
             for (auto&& pipeline : object_output.draw_infos)
             {
+              // VkBuffer vertexBuffers[] = {vertexBuffer};
+              // VkDeviceSize offsets[] = {0};
+              // vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
               // for (int i = 0; i != 500; ++i)
                 fastdraw::output::vulkan::draw (pipeline, commandBuffers[imageIndex]);
 
@@ -453,6 +453,8 @@ int main()
     VkShaderModule vertShaderModule = load_shader("tests/vert.spv");
     VkShaderModule fragShaderModule = load_shader("tests/frag.spv");
 
+    fastdraw::output::vulkan::shader_loader shader_loader("res/shader/vulkan", device);
+
     VkRenderPass renderPass;
     {
       VkAttachmentDescription colorAttachment = {};
@@ -547,7 +549,7 @@ int main()
     fastdraw::object::fill_triangle<point_type, color_type> triangle{{{0.0, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, red};
     // fastdraw::object::fill_triangle<point_type, color_type> triangle2{{{0.0, -0.25}, {0.25, 0.25}, {-0.25, 0.25}}, blue};
 
-    push_back(scene, scene_diff, triangle, text_type {{{0.0, 0.0}, {0.25, 0.25}, "/usr/share/fonts/TTF/DejaVuSans.ttf", "Hello World"}, blue} /*, triangle2
+    push_back(scene, scene_diff/*, triangle/**/, text_type {{{-0.5f, -0.5f}, {1.0f, 1.0f}, "/usr/share/fonts/TTF/DejaVuSans.ttf", "Hello World"}, blue} /*, triangle2
               , triangle_type{{{0.1, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
               , triangle_type{{{0.0, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
               , triangle_type{{{0.1, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
@@ -637,7 +639,8 @@ int main()
     
     fastdraw::output::vulkan::vulkan_output<coord_type, point_type
                                     , color_type> voutput {{{}, graphicsQueue, presentQueue, vertShaderModule, fragShaderModule
-                                                            , swapChainImageFormat, swapChainExtent, device, renderPass}};
+                                                            , swapChainImageFormat, swapChainExtent, device, physicalDevice
+                                                            , renderPass, commandPool, &shader_loader}};
 
     auto intermediate = fastdraw::output::vulkan::output (scene, scene_diff, voutput);
 
@@ -662,20 +665,20 @@ int main()
     if (vkCreateFence (device, &fenceInfo, nullptr, &executionFinishedFence) != VK_SUCCESS)
       throw std::runtime_error("failed to create semaphores!");
 
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
-    std::tie(vertexBuffer, vertexBufferMemory) = create_vertex_buffer (device, sizeof(float)*16, physicalDevice);
+    // VkBuffer vertexBuffer;
+    // VkDeviceMemory vertexBufferMemory;
+    // std::tie(vertexBuffer, vertexBufferMemory) = create_vertex_buffer (device, sizeof(float)*16, physicalDevice);
 
-    void* data;
-    vkMapMemory(device, vertexBufferMemory, 0, sizeof(float)*16, 0, &data);
+    // void* data;
+    // vkMapMemory(device, vertexBufferMemory, 0, sizeof(float)*16, 0, &data);
     
-    const float vertices[] = { triangle.p1.x, triangle.p1.y, 0.0f
-                               , triangle.p2.x, triangle.p2.y, 0.0f
-                               , triangle.p3.x, triangle.p3.y, 0.0f };
+    // const float vertices[] = { triangle.p1.x, triangle.p1.y, 0.0f
+    //                            , triangle.p2.x, triangle.p2.y, 0.0f
+    //                            , triangle.p3.x, triangle.p3.y, 0.0f };
 
-    std::memcpy(data, vertices, sizeof(vertices));
+    // std::memcpy(data, vertices, sizeof(vertices));
 
-    vkUnmapMemory(device, vertexBufferMemory);
+    // vkUnmapMemory(device, vertexBufferMemory);
     
 
     while(1) {
@@ -727,8 +730,7 @@ int main()
         static bool recorded[2] = {false, false};
         // if (!recorded[imageIndex])
           {
-            record_command_buffer(renderPass, commandBuffers, imageIndex, swapChainFramebuffers, swapChainExtent, diff_output
-                                  , vertexBuffer);
+            record_command_buffer(renderPass, commandBuffers, imageIndex, swapChainFramebuffers, swapChainExtent, diff_output);
             recorded[imageIndex] = true;
           }
         

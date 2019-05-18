@@ -61,7 +61,7 @@ struct create_output_specific_object_visitor
   }
   vulkan_draw_info operator()(object::fill_box<Point, Color> const& box)
   {
-    return vulkan::create_output_specific_object (*output, box);
+    return {};// vulkan::create_output_specific_object (*output, box);
   }
 };
 

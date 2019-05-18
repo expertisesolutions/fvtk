@@ -202,7 +202,6 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     attributeDescription.location = 0;
     attributeDescription.format = VK_FORMAT_R32G32B32_SFLOAT;
     attributeDescription.offset = 0;
-
     
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -240,11 +239,11 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     // uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     // uboLayoutBinding.descriptorCount = 1;
 
-    std::array<float, 16> values
-      ({triangle.p1.x, triangle.p1.y, 0.0f, triangle.fill_color.r
-        , triangle.p2.x, triangle.p2.y, 0.0f, triangle.fill_color.g
-        , triangle.p3.x, triangle.p3.y, 0.0f, triangle.fill_color.b
-        , /*triangle.fill_color.a*/0.0f});
+    // std::array<float, 16> values
+    //   ({triangle.p1.x, triangle.p1.y, 0.0f, triangle.fill_color.r
+    //     , triangle.p2.x, triangle.p2.y, 0.0f, triangle.fill_color.g
+    //     , triangle.p3.x, triangle.p3.y, 0.0f, triangle.fill_color.b
+    //     , /*triangle.fill_color.a*/0.0f});
     
     // VkPushConstantRange pushConstantRange;
     // pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -302,7 +301,22 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
       throw std::runtime_error("failed to create graphics pipeline!");
     }
 
-    return {graphicsPipeline, pipelineLayout, output.renderpass, 3, 1, 0, 0, /*push_constants*/{}};
+    VkBuffer vertexBuffer;
+    VkDeviceMemory vertexBufferMemory;
+    std::tie(vertexBuffer, vertexBufferMemory) = create_vertex_buffer (output.device, sizeof(float)*16, output.physical_device);
+
+    void* data;
+    vkMapMemory(output.device, vertexBufferMemory, 0, sizeof(float)*16, 0, &data);
+    
+    const float vertices[] = { triangle.p1.x, triangle.p1.y, 0.0f
+                               , triangle.p2.x, triangle.p2.y, 0.0f
+                               , triangle.p3.x, triangle.p3.y, 0.0f };
+
+    std::memcpy(data, vertices, sizeof(vertices));
+
+    vkUnmapMemory(output.device, vertexBufferMemory);
+    
+    return {graphicsPipeline, pipelineLayout, output.renderpass, 3, 1, 0, 0, /*push_constants*/{}, {vertexBuffer}};
 }
 
 template <typename Point, typename Color>

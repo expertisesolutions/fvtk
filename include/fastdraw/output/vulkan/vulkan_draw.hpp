@@ -28,7 +28,26 @@ void draw (vulkan_draw_info const& info, VkCommandBuffer commandBuffer)
                        info.push_constants.size(),
                        info.push_constants.data());
   }
-              
+  if (!info.vertex_buffers.empty())
+  {
+    // VkBuffer vertexBuffers[] = {*info.vertex_buffer};
+    std::vector<VkDeviceSize> offsets;
+    for (auto&& buffer : info.vertex_buffers)
+      offsets.push_back(0);
+    vkCmdBindVertexBuffers(commandBuffer, 0, info.vertex_buffers.size(), &info.vertex_buffers[0], &offsets[0]);
+  }
+  if (info.descriptorSet)
+  {
+    vkCmdBindDescriptorSets(
+    commandBuffer,
+    VK_PIPELINE_BIND_POINT_GRAPHICS,
+    /*info.descriptorSetLayout*/info.pipeline_layout,
+    0, // firstSet
+    1, // descriptorSetCount
+    &*info.descriptorSet,
+    0, // dynamicOffsetCount
+    nullptr); // pDynamicOffsets  
+  }              
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, info.pipeline);
   vkCmdDraw(commandBuffer, info.vertexCount, info.instanceCount, info.firstVertex, info.firstInstance);
 }

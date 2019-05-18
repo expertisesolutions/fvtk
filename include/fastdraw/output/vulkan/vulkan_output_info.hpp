@@ -15,6 +15,8 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include <fastdraw/output/vulkan/shader_loader.hpp>
+
 namespace fastdraw { namespace output { namespace vulkan {
 
 template <typename WindowingBase>
@@ -25,7 +27,10 @@ struct vulkan_output_info : WindowingBase
   VkFormat swapChainImageFormat;
   VkExtent2D swapChainExtent;
   VkDevice device;
+  VkPhysicalDevice physical_device;
   VkRenderPass renderpass;
+  VkCommandPool command_pool;
+  vulkan::shader_loader* shader_loader;
 };
 
 
