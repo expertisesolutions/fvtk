@@ -31,6 +31,7 @@ struct vulkan_output_info : WindowingBase
   VkRenderPass renderpass;
   VkCommandPool command_pool;
   vulkan::shader_loader* shader_loader;
+  int dpi = 96;
 };
 
 

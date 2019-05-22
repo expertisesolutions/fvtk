@@ -12,6 +12,7 @@
 
 #include <fastdraw/output/vulkan/vulkan_output.hpp>
 #include <fastdraw/object/triangle.hpp>
+#include <fastdraw/coordinates.hpp>
 
 #include <vector>
 #include <stdexcept>

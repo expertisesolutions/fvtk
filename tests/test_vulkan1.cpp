@@ -207,6 +207,7 @@ int main()
   Window                  win;
   //XWindowAttributes       gwa;
   XEvent                  xev = {};
+  int width = 1280, height = 1000;
 
   dpy = XOpenDisplay(NULL);
  
@@ -222,7 +223,7 @@ int main()
   swa.colormap = cmap;
   swa.event_mask = ExposureMask | KeyPressMask;
  
-  win = XCreateWindow(dpy, root, 0, 0, 1280, 1000, 0, /*vi->depth*/24, InputOutput, /*vi->visual*/0, CWColormap | CWEventMask, &swa);
+  win = XCreateWindow(dpy, root, 0, 0, width, height, 0, /*vi->depth*/24, InputOutput, /*vi->visual*/0, CWColormap | CWEventMask, &swa);
 
   XMapWindow(dpy, win);
   XStoreName(dpy, win, "VERY SIMPLE APPLICATION");
@@ -546,10 +547,19 @@ int main()
     typedef fastdraw::object::fill_text<point_type, std::string, color_type> text_type;
 
     color_type red {1.0, 0.0, 0.0}, blue {0.0, 0.0, 1.0};
-    fastdraw::object::fill_triangle<point_type, color_type> triangle{{{0.0, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, red};
+    fastdraw::object::fill_triangle<point_type, color_type> triangle{{{0.0, -0.75}, {0.75, 0.75}, {-0.75, 0.75}}, red};
     // fastdraw::object::fill_triangle<point_type, color_type> triangle2{{{0.0, -0.25}, {0.25, 0.25}, {-0.25, 0.25}}, blue};
 
-    push_back(scene, scene_diff/*, triangle/**/, text_type {{{-0.5f, -0.5f}, {1.0f, 1.0f}, "/usr/share/fonts/TTF/DejaVuSans.ttf", "Hello World"}, blue} /*, triangle2
+    push_back(scene, scene_diff, triangle
+              , text_type
+              {
+                {
+                  {-0.5f, -0.5f}, {1.0f, 0.3f}, "/usr/share/fonts/TTF/DejaVuSans.ttf", "Hello World"
+                  , {fastdraw::object::text_scale{true, true}}
+                  , fastdraw::object::text_align::center
+                  , fastdraw::object::text_align::center
+                }, blue
+              } /*, triangle2
               , triangle_type{{{0.1, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
               , triangle_type{{{0.0, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
               , triangle_type{{{0.1, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
@@ -638,9 +648,10 @@ int main()
     std::cout << "diff size " << scene_diff.operations.size() << std::endl;
     
     fastdraw::output::vulkan::vulkan_output<coord_type, point_type
-                                    , color_type> voutput {{{}, graphicsQueue, presentQueue, vertShaderModule, fragShaderModule
-                                                            , swapChainImageFormat, swapChainExtent, device, physicalDevice
-                                                            , renderPass, commandPool, &shader_loader}};
+                                            , color_type> voutput
+      {{{}, graphicsQueue, presentQueue, vertShaderModule, fragShaderModule
+        , swapChainImageFormat, swapChainExtent, device, physicalDevice
+        , renderPass, commandPool, &shader_loader}};
 
     auto intermediate = fastdraw::output::vulkan::output (scene, scene_diff, voutput);
 

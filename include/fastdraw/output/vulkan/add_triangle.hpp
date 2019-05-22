@@ -51,10 +51,10 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
                                                , VkPipelineColorBlendAttachmentState colorBlendAttachment
                                                = {VK_TRUE                                                  // blendEnable
                                                   , VK_BLEND_FACTOR_ONE                                    // srcColorBlendFactor
-                                                  , VK_BLEND_FACTOR_ZERO                                   // dstColorBlendFactor
+                                                  , VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA                    // dstColorBlendFactor
                                                   , VK_BLEND_OP_ADD                                        // colorBlendOp
                                                   , VK_BLEND_FACTOR_ONE                                    // srcAlphaBlendFactor
-                                                  , VK_BLEND_FACTOR_ZERO                                   // dstAlphaBlendFactor
+                                                  , VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA                    // dstAlphaBlendFactor
                                                   , VK_BLEND_OP_ADD                                        // alphaBlendOp
                                                   , VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT    // colorWriteMask
                                                   | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT    // colorWriteMask
@@ -67,7 +67,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
                                                    , VK_LOGIC_OP_COPY                                      // logicOp
                                                    , 1                                                     // attachmentCount
                                                    , nullptr                                               // pAttachments = &colorBlendAttachment 
-                                                   , {1.0f, 1.0f, 1.0f, 0.5f}                              // blendConstants
+                                                   , {1.0f, 1.0f, 1.0f, 1.0f}                              // blendConstants
                                                }
                                                )
 {
@@ -316,7 +316,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
 
     vkUnmapMemory(output.device, vertexBufferMemory);
     
-    return {graphicsPipeline, pipelineLayout, output.renderpass, 3, 1, 0, 0, /*push_constants*/{}, {vertexBuffer}};
+    return {graphicsPipeline, pipelineLayout, output.renderpass, 3, 1, 0, 0, /*push_constants*/{}, {{0ul, vertexBuffer}}};
 }
 
 template <typename Point, typename Color>

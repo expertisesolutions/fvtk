@@ -14,6 +14,7 @@
 #include <fastdraw/output/vulkan/vulkan_draw_info.hpp>
 #include <fastdraw/output/vulkan/buffer.hpp>
 #include <fastdraw/object/text.hpp>
+#include <fastdraw/coordinates.hpp>
 
 #include <vector>
 #include <stdexcept>
@@ -58,10 +59,10 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
                                                , VkPipelineColorBlendAttachmentState colorBlendAttachment
                                                = {VK_TRUE                                                  // blendEnable
                                                   , VK_BLEND_FACTOR_ONE                                    // srcColorBlendFactor
-                                                  , VK_BLEND_FACTOR_ZERO                                   // dstColorBlendFactor
+                                                  , VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA                    // dstColorBlendFactor
                                                   , VK_BLEND_OP_ADD                                        // colorBlendOp
                                                   , VK_BLEND_FACTOR_ONE                                    // srcAlphaBlendFactor
-                                                  , VK_BLEND_FACTOR_ZERO                                   // dstAlphaBlendFactor
+                                                  , VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA                    // dstAlphaBlendFactor
                                                   , VK_BLEND_OP_ADD                                        // alphaBlendOp
                                                   , VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT    // colorWriteMask
                                                   | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT    // colorWriteMask
@@ -74,7 +75,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
                                                    , VK_LOGIC_OP_COPY                                      // logicOp
                                                    , 1                                                     // attachmentCount
                                                    , nullptr                                               // pAttachments = &colorBlendAttachment 
-                                                   , {1.0f, 1.0f, 1.0f, 0.5f}                              // blendConstants
+                                                   , {1.0f, 1.0f, 1.0f, 1.0f}                              // blendConstants
                                                }
                                                )
 {
@@ -103,7 +104,19 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     throw float{};
   }
 
-  error = FT_Set_Pixel_Sizes(face, 0, 40); /* set character size */
+  auto whole_width = output.swapChainExtent.width;
+  auto whole_height = output.swapChainExtent.height;
+
+  auto texture_width = coordinates::proportion(text.size.x, whole_width);
+  auto texture_height = coordinates::proportion(text.size.y, whole_height);
+  unsigned int pen_y = (texture_height / 3) * 2;
+
+  std::cout << "width " << texture_width << " height " << texture_height << " pen_y " << pen_y << std::endl;
+
+  if (object::text_scale const* scale = std::get_if<object::text_scale>(&text.size_information))
+    error = FT_Set_Pixel_Sizes(face, 0, texture_height - 100); /* set character size */
+  else
+    error = FT_Set_Char_Size (face, 20 << 6, 0, 300, 0);
   if (error)
     throw uint32_t{};
 
@@ -147,33 +160,75 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
   
   int pen_x = 0;
 
-  auto width = 1024;
-  auto height = 1024;
-  auto size = width * height * sizeof(float);
+  ///
+  // calculate the optimal texture size
+  
+  auto size = texture_width * texture_height * sizeof(float);
+
+  std::cout << "texture size w: " << texture_width << " h: " << texture_height << std::endl;
 
   auto staging_pair = vulkan::create_buffer(output.device, size, output.physical_device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
   void* data;
   vkMapMemory(output.device, staging_pair.second, 0, size, 0, &data);
 
-  std::memset (data, 127, size);
-  
-  vkUnmapMemory(output.device, staging_pair.second);
+  std::fill (static_cast<uint32_t*>(data), static_cast<uint32_t*>(data) + texture_width * texture_height
+             , 0x00000000);
+
   for (int i = 0; i != glyph_count; ++i) 
   {
     FT_UInt glyph_index = glyph_info[i].codepoint;
     FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT);
     std::cout << "glyph index " << glyph_index << std::endl;
     //OutputDebugString(dbg_info);
- 
+
+    // FT_Size_RequestRec req;
+    // error = FT_Request_Size (face, &req);
+    // if (error)
+    //   throw -1;
+
+    // std::cout << "size is " << req.width << "x" << req.height << std::endl;
+  
+    
     /* convert to an anti-aliased bitmap */
     FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
 
     // FreeTypeDrawBitmap(dc, &face->glyph->bitmap, pen_x +
     //                    face->glyph->bitmap_left,
     //                    yBaseLine - ft_face->glyph->bitmap_top);
-    pen_x += face->glyph->advance.x/* >> 6*/;
+
+    FT_Bitmap bitmap = face->glyph->bitmap;
+    std::cout << "size " << bitmap.width << 'x' << bitmap.rows << std::endl;
+    std::cout << "advance " << (face->glyph->advance.x >> 6)<< std::endl;
+    std::cout << "bitmap type " << (int)bitmap.pixel_mode << " bitmap_left " << face->glyph->bitmap_left
+              << " bitmap top " << face->glyph->bitmap_top << std::endl;
+    
+    {
+      int di = (pen_y - face->glyph->bitmap_top)*texture_width*sizeof(float) + pen_x*sizeof(float) + face->glyph->bitmap_left*sizeof(float);
+      std::cout << "di " << di << std::endl;
+      unsigned char* current = bitmap.buffer;
+      for (int j = 0; j != bitmap.rows; ++j)
+      {
+        std::cout << "stride " << bitmap.pitch << std::endl;
+
+        for (int i = 0; i != bitmap.width; ++i)
+        {
+          char* data_ = static_cast<char*>(data);
+          data_[di + i*4 + 0] = current[i];
+          data_[di + i*4 + 1] = current[i];
+          data_[di + i*4 + 2] = current[i];
+          data_[di + i*4 + 3] = current[i];
+        }
+        
+        current += bitmap.pitch;
+        di += texture_width*sizeof(float);
+      }
+    }
+  
+    pen_x += face->glyph->advance.x >> 6 /* 26.6 FF */;
   }
+
+  vkUnmapMemory(output.device, staging_pair.second);
 
   VkImage textureImage;
   VkDeviceMemory textureImageMemory;
@@ -181,8 +236,8 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
   VkImageCreateInfo imageInfo = {};
   imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
   imageInfo.imageType = VK_IMAGE_TYPE_2D;
-  imageInfo.extent.width = static_cast<uint32_t>(width);
-  imageInfo.extent.height = static_cast<uint32_t>(height);
+  imageInfo.extent.width = static_cast<uint32_t>(texture_width);
+  imageInfo.extent.height = static_cast<uint32_t>(texture_height);
   imageInfo.extent.depth = 1;
   imageInfo.mipLevels = 1;
   imageInfo.arrayLayers = 1;
@@ -278,8 +333,8 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
 
   region.imageOffset = {0, 0, 0};
   region.imageExtent = {
-                        width,
-                        height,
+                        texture_width,
+                        texture_height,
                         1
   };
   
@@ -427,12 +482,6 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     
     VkVertexInputAttributeDescription attributeDescriptions[2] = {};
 
-    struct Vertex
-    {
-      float v1, v2;
-      float t1, t2;
-    };
-    
     attributeDescriptions[0].binding = 0;
     attributeDescriptions[0].location = 0;
     attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
@@ -441,7 +490,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     attributeDescriptions[1].binding = 0;
     attributeDescriptions[1].location = 1;
     attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescriptions[1].offset = sizeof(float)*2;
+    attributeDescriptions[1].offset = sizeof(float)*12;
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -523,6 +572,8 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
+    std::cout << "output.swapChainExtent.width " << output.swapChainExtent.width << std::endl;
+
     VkRect2D scissor = {};
     scissor.offset = {0, 0};
     scissor.extent = output.swapChainExtent;    
@@ -585,48 +636,39 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
 
     VkBuffer vertexBuffer;
     {
-      const float vertices[] = {   text.p1.x              , text.p1.y              //, -0.5f, -0.5f
-                                 , text.p1.x + text.size.x, text.p1.y              //,  0.5f, -0.5f
-                                 , text.p1.x + text.size.x, text.p1.y + text.size.y//,  0.5f,  0.5f
-                                 , text.p1.x              , text.p1.y              //, -0.5f, -0.5f
-                                 , text.p1.x + text.size.x, text.p1.y + text.size.y//,  0.5f,  0.5f
-                                 , text.p1.x              , text.p1.y + text.size.y//, -0.5f,  0.5f
+      const float vertices[] = {   coordinates::ratio(text.p1.x, whole_width)              , coordinates::ratio(text.p1.y, whole_height)
+                                 , coordinates::ratio(text.p1.x + text.size.x, whole_width), coordinates::ratio(text.p1.y, whole_height)              
+                                 , coordinates::ratio(text.p1.x + text.size.x, whole_width), coordinates::ratio(text.p1.y + text.size.y, whole_height)
+                                 , coordinates::ratio(text.p1.x + text.size.x, whole_width), coordinates::ratio(text.p1.y + text.size.y, whole_height)
+                                 , coordinates::ratio(text.p1.x, whole_width)              , coordinates::ratio(text.p1.y + text.size.y, whole_height)
+                                 , coordinates::ratio(text.p1.x, whole_width)              , coordinates::ratio(text.p1.y, whole_height)
+      };
+      const float coordinates[] = {   0.0f, 0.0f
+                                    , 1.0f, 0.0f
+                                    , 1.0f, 1.0f
+                                    , 1.0f, 1.0f
+                                    , 0.0f, 1.0f
+                                    , 0.0f, 0.0f
       };
 
+      for (int i = 0; i != 12; i += 2)
+      {        
+        std::cout << "x: " << vertices[i] << " y: " << vertices[i+1] << std::endl;
+      }
+
       VkDeviceMemory vertexBufferMemory;
-      std::tie(vertexBuffer, vertexBufferMemory) = create_vertex_buffer (output.device, sizeof(vertices), output.physical_device);
+      std::tie(vertexBuffer, vertexBufferMemory) = create_vertex_buffer (output.device, sizeof(vertices) + sizeof(coordinates), output.physical_device);
 
       void* data;
       vkMapMemory(output.device, vertexBufferMemory, 0, sizeof(vertices), 0, &data);
     
-      
       std::memcpy(data, vertices, sizeof(vertices));
+      std::memcpy(&static_cast<char*>(data)[sizeof(vertices)], coordinates, sizeof(coordinates));
 
       vkUnmapMemory(output.device, vertexBufferMemory);
     }
-    VkBuffer coordBuffer;
-    {
-      const float vertices[] = {   0.0f, 0.0f//, 0.0f
-                                 , 1.0f, 0.0f//, 0.0f
-                                 , 1.0f, 1.0f//, 0.0f
-                                 , 0.0f, 0.0f//, 0.0f
-                                 , 1.0f, 1.0f//, 0.0f
-                                 , 0.0f, 1.0f//, 0.0f
-      };
-
-      VkDeviceMemory vertexBufferMemory;
-      std::tie(coordBuffer, vertexBufferMemory) = create_vertex_buffer (output.device, sizeof(vertices), output.physical_device);
-
-      void* data;
-      vkMapMemory(output.device, vertexBufferMemory, 0, sizeof(vertices), 0, &data);
     
-
-      std::memcpy(data, vertices, sizeof(vertices));
-      vkUnmapMemory(output.device, vertexBufferMemory);
-    }
-
-    
-    return {graphicsPipeline, pipelineLayout, output.renderpass, 6, 2, 0, 0, /*push_constants*/{}, {vertexBuffer, coordBuffer}
+    return {graphicsPipeline, pipelineLayout, output.renderpass, 6, 2, 0, 0, /*push_constants*/{}, {{0, vertexBuffer}, {12, vertexBuffer}}
             , descriptorSet, descriptorSetLayout};
   }
   

@@ -13,8 +13,26 @@
 #include <fastdraw/point.hpp>
 
 #include <string>
+#include <variant>
 
 namespace fastdraw { namespace object {
+
+struct text_scale
+{
+  bool vertically, horizontally;
+};
+
+struct text_point_size
+{
+  int point_size;
+};
+
+enum class text_align
+{
+  left_to_right,
+  right_to_left,
+  center
+};
 
 template <typename Point, typename String = std::string>
 struct text_base
@@ -24,7 +42,14 @@ struct text_base
   point_type size;
   String face;
   String text;
-  
+
+  std::variant
+  <
+    text_scale
+    , text_point_size
+  >
+  size_information;
+  text_align horizontal_alignment, vertical_alignment;
 };
 
 template <typename Point, typename String, typename Color>

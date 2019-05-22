@@ -28,7 +28,7 @@ struct vulkan_draw_info
   uint32_t firstInstance;
 
   std::vector<char> push_constants;
-  std::vector<VkBuffer> vertex_buffers;
+  std::vector<std::pair<std::size_t, VkBuffer>> vertex_buffers;
   std::optional<VkDescriptorSet> descriptorSet;
   VkDescriptorSetLayout descriptorSetLayout;
 };

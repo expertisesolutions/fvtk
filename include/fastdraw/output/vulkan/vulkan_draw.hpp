@@ -32,9 +32,13 @@ void draw (vulkan_draw_info const& info, VkCommandBuffer commandBuffer)
   {
     // VkBuffer vertexBuffers[] = {*info.vertex_buffer};
     std::vector<VkDeviceSize> offsets;
-    for (auto&& buffer : info.vertex_buffers)
-      offsets.push_back(0);
-    vkCmdBindVertexBuffers(commandBuffer, 0, info.vertex_buffers.size(), &info.vertex_buffers[0], &offsets[0]);
+    std::vector<VkBuffer> buffers;
+    for (auto&& buffer_info : info.vertex_buffers)
+    {
+      offsets.push_back(buffer_info.first);
+      buffers.push_back(buffer_info.second);
+    }
+    vkCmdBindVertexBuffers(commandBuffer, 0, info.vertex_buffers.size(), &buffers[0], &offsets[0]);
   }
   if (info.descriptorSet)
   {
