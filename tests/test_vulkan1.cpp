@@ -29,7 +29,7 @@
 typedef float coord_type;
 typedef fastdraw::point<coord_type> point_type;
 typedef float color_channel_type;
-typedef fastdraw::color::color_rgb<color_channel_type> color_type;
+typedef fastdraw::color::color_premultiplied_rgba<color_channel_type> color_type;
 
 uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, VkPhysicalDevice physicalDevice);
 
@@ -546,8 +546,8 @@ int main()
     typedef fastdraw::object::fill_triangle<point_type, color_type> triangle_type;
     typedef fastdraw::object::fill_text<point_type, std::string, color_type> text_type;
 
-    color_type red {1.0, 0.0, 0.0}, blue {0.0, 0.0, 1.0};
-    fastdraw::object::fill_triangle<point_type, color_type> triangle{{{0.0, -0.75}, {0.75, 0.75}, {-0.75, 0.75}}, red};
+    color_type red {1.0, 0.0, 0.0, 1.0}, blue {0.0, 0.0, 1.0, 1.0}, transparent_blue {0.0, 0.0, 0.5, 0.5};
+    triangle_type triangle{{{0.0, -0.75}, {0.75, 0.75}, {-0.75, 0.75}}, red};
     // fastdraw::object::fill_triangle<point_type, color_type> triangle2{{{0.0, -0.25}, {0.25, 0.25}, {-0.25, 0.25}}, blue};
 
     push_back(scene, scene_diff, triangle
@@ -558,7 +558,7 @@ int main()
                   , {fastdraw::object::text_scale{true, true}}
                   , fastdraw::object::text_align::center
                   , fastdraw::object::text_align::center
-                }, blue
+                }, transparent_blue
               } /*, triangle2
               , triangle_type{{{0.1, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
               , triangle_type{{{0.0, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
@@ -727,22 +727,22 @@ int main()
         // std::cout << "doing animation " << imageIndex << std::endl;
         //fastdraw::output::vulkan::vulkan_output<coord_type, point_type, color_type> output = voutput;
         fastdraw::output::vulkan::vulkan_output<coord_type, point_type, color_type> diff_output;
-        static bool first = true;
+        // static bool first = true;
         //if (first)
           {
             diff_output = voutput;
-            first = false;
+            // first = false;
           }
         // else
         //   diff_output = on_animation (scene, scene_diff, voutput);
 
         //std::cout << "animation " << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - before_draw).count() << "micros" << std::endl;
 
-        static bool recorded[2] = {false, false};
+        // static bool recorded[2] = {false, false};
         // if (!recorded[imageIndex])
           {
             record_command_buffer(renderPass, commandBuffers, imageIndex, swapChainFramebuffers, swapChainExtent, diff_output);
-            recorded[imageIndex] = true;
+            // recorded[imageIndex] = true;
           }
         
         //std::cout << "saving buffer " << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - before_draw).count() << "micros" << std::endl;

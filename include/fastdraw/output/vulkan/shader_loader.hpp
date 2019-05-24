@@ -78,8 +78,8 @@ struct shader_loader
       return iterator->second;
   }
 
-  VkDevice device;
   std::filesystem::path path;
+  VkDevice device;
   mutable std::map<shader, VkShaderModule> map;
 };
 

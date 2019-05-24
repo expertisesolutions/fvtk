@@ -15,6 +15,7 @@
 #include <fastdraw/output/vulkan/buffer.hpp>
 #include <fastdraw/object/text.hpp>
 #include <fastdraw/coordinates.hpp>
+#include <fastdraw/color.hpp>
 
 #include <vector>
 #include <stdexcept>
@@ -207,17 +208,36 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
       int di = (pen_y - face->glyph->bitmap_top)*texture_width*sizeof(float) + pen_x*sizeof(float) + face->glyph->bitmap_left*sizeof(float);
       std::cout << "di " << di << std::endl;
       unsigned char* current = bitmap.buffer;
-      for (int j = 0; j != bitmap.rows; ++j)
+      for (decltype(bitmap.rows) j = 0; j != bitmap.rows; ++j)
       {
         std::cout << "stride " << bitmap.pitch << std::endl;
 
-        for (int i = 0; i != bitmap.width; ++i)
+        for (auto i = static_cast<decltype(bitmap.width)>(0); i != bitmap.width; ++i)
         {
+          typedef color::color_traits<Color> color_traits;
+          typedef typename color_traits::channel color_channel;
+          typedef color::color_channel_traits<color_channel> color_channel_traits;
+          typedef color::color_channel_traits<uint8_t> dst_color_channel_traits;
+
+          auto pcolor = color_traits::to_premultiplied_alpha(text.fill_color);
+          color::color_premultiplied_rgba<uint8_t> current_color;
+
+          // current_color.r = unratio (color_traits::parametric_domain_ratio
+          //   (color_traits::r(text.color), color_traits::max(), dst_color_traits::max())
+          //   * dst_color_traits::ratio (current[i], dst_color_traits::max()));
+
+          // current_color.r = color_traits::r(text.color) * ratio(current[i], dst_color_channel_traits::max());
+          current_color.r = color::apply_occlusion<uint8_t>(color_traits::red(text.fill_color), current[i]);
+          current_color.g = color::apply_occlusion<uint8_t>(color_traits::green(text.fill_color), current[i]);
+          current_color.b = color::apply_occlusion<uint8_t>(color_traits::blue(text.fill_color), current[i]);
+          current_color.a = color::apply_occlusion<uint8_t>(color_traits::alpha(text.fill_color), current[i]);
+
           char* data_ = static_cast<char*>(data);
-          data_[di + i*4 + 0] = current[i];
-          data_[di + i*4 + 1] = current[i];
-          data_[di + i*4 + 2] = current[i];
-          data_[di + i*4 + 3] = current[i];
+          data_[di + i*4 + 0] = current_color.red();
+          data_[di + i*4 + 1] = current_color.green();
+          data_[di + i*4 + 2] = current_color.blue();
+          data_[di + i*4 + 3] = current_color.alpha();
+          std::cout << "text_fill.a " << color_traits::alpha(text.fill_color) << " gray " << (int)current[i] << " alpha " << (int)current_color.alpha() << std::endl;
         }
         
         current += bitmap.pitch;
@@ -636,25 +656,27 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
 
     VkBuffer vertexBuffer;
     {
-      const float vertices[] = {   coordinates::ratio(text.p1.x, whole_width)              , coordinates::ratio(text.p1.y, whole_height)
-                                 , coordinates::ratio(text.p1.x + text.size.x, whole_width), coordinates::ratio(text.p1.y, whole_height)              
-                                 , coordinates::ratio(text.p1.x + text.size.x, whole_width), coordinates::ratio(text.p1.y + text.size.y, whole_height)
-                                 , coordinates::ratio(text.p1.x + text.size.x, whole_width), coordinates::ratio(text.p1.y + text.size.y, whole_height)
-                                 , coordinates::ratio(text.p1.x, whole_width)              , coordinates::ratio(text.p1.y + text.size.y, whole_height)
-                                 , coordinates::ratio(text.p1.x, whole_width)              , coordinates::ratio(text.p1.y, whole_height)
-      };
-      const float coordinates[] = {   0.0f, 0.0f
-                                    , 1.0f, 0.0f
-                                    , 1.0f, 1.0f
-                                    , 1.0f, 1.0f
-                                    , 0.0f, 1.0f
-                                    , 0.0f, 0.0f
-      };
+      const float vertices[] =
+        {     coordinates::ratio(text.p1.x, whole_width)              , coordinates::ratio(text.p1.y, whole_height)
+            , coordinates::ratio(text.p1.x + text.size.x, whole_width), coordinates::ratio(text.p1.y, whole_height)              
+            , coordinates::ratio(text.p1.x + text.size.x, whole_width), coordinates::ratio(text.p1.y + text.size.y, whole_height)
+            , coordinates::ratio(text.p1.x + text.size.x, whole_width), coordinates::ratio(text.p1.y + text.size.y, whole_height)
+            , coordinates::ratio(text.p1.x, whole_width)              , coordinates::ratio(text.p1.y + text.size.y, whole_height)
+            , coordinates::ratio(text.p1.x, whole_width)              , coordinates::ratio(text.p1.y, whole_height)
+        };
+      const float coordinates[] =
+        {   0.0f, 0.0f
+            , 1.0f, 0.0f
+            , 1.0f, 1.0f
+            , 1.0f, 1.0f
+            , 0.0f, 1.0f
+            , 0.0f, 0.0f
+        };
 
-      for (int i = 0; i != 12; i += 2)
-      {        
-        std::cout << "x: " << vertices[i] << " y: " << vertices[i+1] << std::endl;
-      }
+      // for (int i = 0; i != 12; i += 2)
+      // {        
+      //   std::cout << "x: " << vertices[i] << " y: " << vertices[i+1] << std::endl;
+      // }
 
       VkDeviceMemory vertexBufferMemory;
       std::tie(vertexBuffer, vertexBufferMemory) = create_vertex_buffer (output.device, sizeof(vertices) + sizeof(coordinates), output.physical_device);
