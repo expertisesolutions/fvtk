@@ -1,6 +1,7 @@
 #include <fastdraw/scene.hpp>
 #include <fastdraw/output/vulkan/vulkan_output.hpp>
 #include <fastdraw/output/vulkan/add_triangle.hpp>
+#include <fastdraw/output/vulkan/add_box.hpp>
 #include <fastdraw/object/triangle.hpp>
 #include <fastdraw/color.hpp>
 #include <fastdraw/output/vulkan/shader_loader.hpp>
@@ -545,9 +546,11 @@ int main()
     fastdraw::scene_difference<float, point_type, color_type> scene_diff;
     typedef fastdraw::object::fill_triangle<point_type, color_type> triangle_type;
     typedef fastdraw::object::fill_text<point_type, std::string, color_type> text_type;
+    typedef fastdraw::object::fill_box<point_type, color_type> box_type;
 
-    color_type red {1.0, 0.0, 0.0, 1.0}, blue {0.0, 0.0, 1.0, 1.0}, transparent_blue {0.0, 0.0, 0.5, 0.5};
-    triangle_type triangle{{{0.0, -0.75}, {0.75, 0.75}, {-0.75, 0.75}}, red};
+    color_type red {1.0, 0.0, 0.0, 1.0}, blue {0.0, 0.0, 1.0, 1.0}, transparent_blue {0.0, 0.0, 0.5, 0.5}
+      , transparent_red {0.0, 0.25, 0.0, 0.25};;
+    triangle_type triangle{{{0.0, -0.75}, {0.75, 0.75}, {-0.75, 0.75}}, blue};
     // fastdraw::object::fill_triangle<point_type, color_type> triangle2{{{0.0, -0.25}, {0.25, 0.25}, {-0.25, 0.25}}, blue};
 
     push_back(scene, scene_diff, triangle
@@ -559,7 +562,13 @@ int main()
                   , fastdraw::object::text_align::center
                   , fastdraw::object::text_align::center
                 }, transparent_blue
-              } /*, triangle2
+              }
+              , box_type
+              {
+                {{-0.5f, -0.5f}, {1.0f, 0.3f}}, transparent_red
+              }
+
+              /*, triangle2
               , triangle_type{{{0.1, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
               , triangle_type{{{0.0, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}
               , triangle_type{{{0.1, -0.5}, {0.5, 0.5}, {-0.5, 0.5}}, blue}

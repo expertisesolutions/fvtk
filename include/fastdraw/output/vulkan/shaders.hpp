@@ -7,8 +7,8 @@
 // See http://www.boost.org/libs/foreach for documentation
 //
 
-#ifndef FASTDRAW_OUTPUT_VULKAN_ADD_BOX_HPP
-#define FASTDRAW_OUTPUT_VULKAN_ADD_BOX_HPP
+#ifndef FASTDRAW_OUTPUT_VULKAN_SHADERS_HPP
+#define FASTDRAW_OUTPUT_VULKAN_SHADERS_HPP
 
 namespace fastdraw { namespace output { namespace vulkan {
 

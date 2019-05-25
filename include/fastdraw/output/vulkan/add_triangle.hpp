@@ -75,248 +75,111 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
   if(colorBlending.attachmentCount == 1 && colorBlending.pAttachments == nullptr)
     colorBlending.pAttachments = &colorBlendAttachment;
   
-  /***
+  VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
+  vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+  vertShaderStageInfo.module = output.vertShaderModule;
+  vertShaderStageInfo.pName = "main";
 
-      add specialization
+  VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
+  fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+  fragShaderStageInfo.module = output.fragShaderModule;
+  fragShaderStageInfo.pName = "main";
 
-  */
+  VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
-  // const float vertices[] = { triangle.p1.x, triangle.p1.y, 0.0f
-  //                            , triangle.p2.x, triangle.p2.y, 0.0f
-  //                            , triangle.p3.x, triangle.p3.y, 0.0f };
+  VkVertexInputBindingDescription bindingDescription = {};
+  bindingDescription.binding = 0;
+  bindingDescription.stride = sizeof(float)*3;
+  bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+  VkVertexInputAttributeDescription attributeDescription = {};
+  attributeDescription.binding = 0;
+  attributeDescription.location = 0;
+  attributeDescription.format = VK_FORMAT_R32G32B32_SFLOAT;
+  attributeDescription.offset = 0;
     
-  //   const VkSpecializationMapEntry vertSpecializationEntries[] =
-  //     {
-  //      {
-  //       0,                                    // constantID
-  //       sizeof(float)*0,  // offset
-  //       sizeof(float)     // size
-  //      },
-  //      {
-  //       1,                                   // constantID
-  //       sizeof(float)*1,  // offset
-  //       sizeof(float)     // size
-  //      },
-  //      {
-  //       2,                                   // constantID
-  //       sizeof(float)*2,  // offset
-  //       sizeof(float)     // size
-  //      },
-  //      {
-  //       3,                                   // constantID
-  //       sizeof(float)*3,  // offset
-  //       sizeof(float)     // size
-  //      },
-  //      {
-  //       4,                                   // constantID
-  //       sizeof(float)*4,  // offset
-  //       sizeof(float)     // size
-  //      },
-  //      {
-  //       5,                                   // constantID
-  //       sizeof(float)*5,  // offset
-  //       sizeof(float)     // size
-  //      },
-  //      {
-  //       6,                                   // constantID
-  //       sizeof(float)*6,  // offset
-  //       sizeof(float)     // size
-  //      },
-  //      {
-  //       7,                                   // constantID
-  //       sizeof(float)*7,  // offset
-  //       sizeof(float)     // size
-  //      },
-  //      {
-  //       8,                                   // constantID
-  //       sizeof(float)*8,  // offset
-  //       sizeof(float)     // size
-  //      }
-  //     };
+  VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+  vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+  vertexInputInfo.vertexBindingDescriptionCount = 1;
+  vertexInputInfo.pVertexBindingDescriptions = &bindingDescription; // Optional
+  vertexInputInfo.vertexAttributeDescriptionCount = 1;
+  vertexInputInfo.pVertexAttributeDescriptions = &attributeDescription; // Optional
 
-  //   const VkSpecializationInfo vertShaderSpecializationInfo =
-  //     {
-  //      9,                                  // mapEntryCount
-  //      vertSpecializationEntries,                            // pMapEntries
-  //      sizeof(vertices),                       // dataSize
-  //      &vertices[0],                              // pData
-  //     };
+  VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
+  inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+  inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+  inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+  VkViewport viewport = {};
+  viewport.x = 0.0f;
+  viewport.y = 0.0f;
+  viewport.width = static_cast<float>(output.swapChainExtent.width);
+  viewport.height = static_cast<float>(output.swapChainExtent.height);
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
+
+  VkRect2D scissor = {};
+  scissor.offset = {0, 0};
+  scissor.extent = output.swapChainExtent;    
+
+  VkPipelineViewportStateCreateInfo viewportState = {};
+  viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+  viewportState.viewportCount = 1;
+  viewportState.pViewports = &viewport;
+  viewportState.scissorCount = 1;
+  viewportState.pScissors = &scissor;
+
+  VkPipelineLayout pipelineLayout;
     
-    VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
-    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertShaderStageInfo.module = output.vertShaderModule;
-    vertShaderStageInfo.pName = "main";
-    //vertShaderStageInfo.pSpecializationInfo = &vertShaderSpecializationInfo;
+  VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+  pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
-    // const VkSpecializationMapEntry fragSpecializationEntries[] =
-    //   {
-    //    {
-    //     0,                                    // constantID
-    //     sizeof(float)*0,  // offset
-    //     sizeof(float)     // size
-    //    },
-    //    {
-    //     1,                                   // constantID
-    //     sizeof(float)*1,  // offset
-    //     sizeof(float)     // size
-    //    },
-    //    {
-    //     2,                                   // constantID
-    //     sizeof(float)*2,  // offset
-    //     sizeof(float)     // size
-    //    },
-    //    {
-    //     3,                                   // constantID
-    //     sizeof(float)*3,  // offset
-    //     sizeof(float)     // size
-    //    }
-    //   };
+  if (vkCreatePipelineLayout(output.device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+    throw std::runtime_error("failed to create pipeline layout!");
+  }
 
-    // const float color[4] = {triangle.fill_color.r, triangle.fill_color.g, triangle.fill_color.b, 0.5f};
+  VkGraphicsPipelineCreateInfo pipelineInfo = {};
+  pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+  pipelineInfo.stageCount = 2;
+  pipelineInfo.pStages = shaderStages;
+  pipelineInfo.pVertexInputState = &vertexInputInfo;
+  pipelineInfo.pInputAssemblyState = &inputAssembly;
+  pipelineInfo.pViewportState = &viewportState;
+  pipelineInfo.pRasterizationState = &rasterizer;
+  pipelineInfo.pMultisampleState = &multisampling;
+  pipelineInfo.pDepthStencilState = nullptr; // Optional
+  pipelineInfo.pColorBlendState = &colorBlending;
+  pipelineInfo.pDynamicState = nullptr; // Optional
+  pipelineInfo.layout = pipelineLayout;
+  pipelineInfo.renderPass = output.renderpass;
+  pipelineInfo.subpass = 0;
+
+  pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
+  pipelineInfo.basePipelineIndex = -1; // Optional
+
+  VkPipeline graphicsPipeline;
+  if (vkCreateGraphicsPipelines(output.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+    throw std::runtime_error("failed to create graphics pipeline!");
+  }
+
+  VkBuffer vertexBuffer;
+  VkDeviceMemory vertexBufferMemory;
+  std::tie(vertexBuffer, vertexBufferMemory) = create_vertex_buffer (output.device, sizeof(float)*16, output.physical_device);
+
+  void* data;
+  vkMapMemory(output.device, vertexBufferMemory, 0, sizeof(float)*16, 0, &data);
     
-    // const VkSpecializationInfo fragShaderSpecializationInfo =
-    //   {
-    //    4,                                  // mapEntryCount
-    //    fragSpecializationEntries,                            // pMapEntries
-    //    sizeof(color),                       // dataSize
-    //    &color[0],                              // pData
-    //   };
+  const float vertices[] = { triangle.p1.x, triangle.p1.y, 0.0f
+                             , triangle.p2.x, triangle.p2.y, 0.0f
+                             , triangle.p3.x, triangle.p3.y, 0.0f };
 
-    VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
-    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragShaderStageInfo.module = output.fragShaderModule;
-    fragShaderStageInfo.pName = "main";
-    // fragShaderStageInfo.pSpecializationInfo = &fragShaderSpecializationInfo;
+  std::memcpy(data, vertices, sizeof(vertices));
 
-    VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-
-    VkVertexInputBindingDescription bindingDescription = {};
-    bindingDescription.binding = 0;
-    bindingDescription.stride = sizeof(float)*3;
-    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-    VkVertexInputAttributeDescription attributeDescription = {};
-    attributeDescription.binding = 0;
-    attributeDescription.location = 0;
-    attributeDescription.format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescription.offset = 0;
+  vkUnmapMemory(output.device, vertexBufferMemory);
     
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
-    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 1;
-    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription; // Optional
-    vertexInputInfo.vertexAttributeDescriptionCount = 1;
-    vertexInputInfo.pVertexAttributeDescriptions = &attributeDescription; // Optional
-
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
-    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-    VkViewport viewport = {};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = static_cast<float>(output.swapChainExtent.width);
-    viewport.height = static_cast<float>(output.swapChainExtent.height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-
-    VkRect2D scissor = {};
-    scissor.offset = {0, 0};
-    scissor.extent = output.swapChainExtent;    
-
-    VkPipelineViewportStateCreateInfo viewportState = {};
-    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewportState.viewportCount = 1;
-    viewportState.pViewports = &viewport;
-    viewportState.scissorCount = 1;
-    viewportState.pScissors = &scissor;
-
-    // VkDescriptorSetLayoutBinding uboLayoutBinding = {};
-    // uboLayoutBinding.binding = 0;
-    // uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    // uboLayoutBinding.descriptorCount = 1;
-
-    // std::array<float, 16> values
-    //   ({triangle.p1.x, triangle.p1.y, 0.0f, triangle.fill_color.r
-    //     , triangle.p2.x, triangle.p2.y, 0.0f, triangle.fill_color.g
-    //     , triangle.p3.x, triangle.p3.y, 0.0f, triangle.fill_color.b
-    //     , /*triangle.fill_color.a*/0.0f});
-    
-    // VkPushConstantRange pushConstantRange;
-    // pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    // pushConstantRange.offset = 0;
-    // pushConstantRange.size = sizeof(float)*values.size();
-
-    // std::vector<char> push_constants(sizeof(float)*values.size());
-
-    // std::memcpy(push_constants.data(), values.data(), push_constants.size());
-
-    // VkDescriptorSetLayout descriptorSetLayout;    
-    VkPipelineLayout pipelineLayout;
-
-    // VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-    // layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    // layoutInfo.bindingCount = 1;
-    // layoutInfo.pBindings = &uboLayoutBinding;
-
-    // if (vkCreateDescriptorSetLayout(output.device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
-    //   throw std::runtime_error("failed to create descriptor set layout!");
-    // }
-    
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    //pipelineLayoutInfo.setLayoutCount = 1; // Optional
-    //pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // Optional
-    // pipelineLayoutInfo.pushConstantRangeCount = 1; // Optional
-    // pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange; // Optional
-
-    if (vkCreatePipelineLayout(output.device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
-      throw std::runtime_error("failed to create pipeline layout!");
-    }
-
-    VkGraphicsPipelineCreateInfo pipelineInfo = {};
-    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineInfo.stageCount = 2;
-    pipelineInfo.pStages = shaderStages;
-    pipelineInfo.pVertexInputState = &vertexInputInfo;
-    pipelineInfo.pInputAssemblyState = &inputAssembly;
-    pipelineInfo.pViewportState = &viewportState;
-    pipelineInfo.pRasterizationState = &rasterizer;
-    pipelineInfo.pMultisampleState = &multisampling;
-    pipelineInfo.pDepthStencilState = nullptr; // Optional
-    pipelineInfo.pColorBlendState = &colorBlending;
-    pipelineInfo.pDynamicState = nullptr; // Optional
-    pipelineInfo.layout = pipelineLayout;
-    pipelineInfo.renderPass = output.renderpass;
-    pipelineInfo.subpass = 0;
-
-    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
-    pipelineInfo.basePipelineIndex = -1; // Optional
-
-    VkPipeline graphicsPipeline;
-    if (vkCreateGraphicsPipelines(output.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
-      throw std::runtime_error("failed to create graphics pipeline!");
-    }
-
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
-    std::tie(vertexBuffer, vertexBufferMemory) = create_vertex_buffer (output.device, sizeof(float)*16, output.physical_device);
-
-    void* data;
-    vkMapMemory(output.device, vertexBufferMemory, 0, sizeof(float)*16, 0, &data);
-    
-    const float vertices[] = { triangle.p1.x, triangle.p1.y, 0.0f
-                               , triangle.p2.x, triangle.p2.y, 0.0f
-                               , triangle.p3.x, triangle.p3.y, 0.0f };
-
-    std::memcpy(data, vertices, sizeof(vertices));
-
-    vkUnmapMemory(output.device, vertexBufferMemory);
-    
-    return {graphicsPipeline, pipelineLayout, output.renderpass, 3, 1, 0, 0, /*push_constants*/{}, {{0ul, vertexBuffer}}};
+  return {graphicsPipeline, pipelineLayout, output.renderpass, 3, 1, 0, 0, /*push_constants*/{}, {{0ul, vertexBuffer}}};
 }
 
 template <typename Point, typename Color>

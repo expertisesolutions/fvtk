@@ -210,7 +210,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
       unsigned char* current = bitmap.buffer;
       for (decltype(bitmap.rows) j = 0; j != bitmap.rows; ++j)
       {
-        std::cout << "stride " << bitmap.pitch << std::endl;
+        // std::cout << "stride " << bitmap.pitch << std::endl;
 
         for (auto i = static_cast<decltype(bitmap.width)>(0); i != bitmap.width; ++i)
         {
@@ -227,17 +227,17 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
           //   * dst_color_traits::ratio (current[i], dst_color_traits::max()));
 
           // current_color.r = color_traits::r(text.color) * ratio(current[i], dst_color_channel_traits::max());
-          current_color.r = color::apply_occlusion<uint8_t>(color_traits::red(text.fill_color), current[i]);
-          current_color.g = color::apply_occlusion<uint8_t>(color_traits::green(text.fill_color), current[i]);
-          current_color.b = color::apply_occlusion<uint8_t>(color_traits::blue(text.fill_color), current[i]);
-          current_color.a = color::apply_occlusion<uint8_t>(color_traits::alpha(text.fill_color), current[i]);
+          current_color.r = color::apply_occlusion<uint8_t>(color_traits::red(pcolor), current[i]);
+          current_color.g = color::apply_occlusion<uint8_t>(color_traits::green(pcolor), current[i]);
+          current_color.b = color::apply_occlusion<uint8_t>(color_traits::blue(pcolor), current[i]);
+          current_color.a = color::apply_occlusion<uint8_t>(color_traits::alpha(pcolor), current[i]);
 
           char* data_ = static_cast<char*>(data);
           data_[di + i*4 + 0] = current_color.red();
           data_[di + i*4 + 1] = current_color.green();
           data_[di + i*4 + 2] = current_color.blue();
           data_[di + i*4 + 3] = current_color.alpha();
-          std::cout << "text_fill.a " << color_traits::alpha(text.fill_color) << " gray " << (int)current[i] << " alpha " << (int)current_color.alpha() << std::endl;
+          //std::cout << "text_fill.a " << color_traits::alpha(text.fill_color) << " gray " << (int)current[i] << " alpha " << (int)current_color.alpha() << std::endl;
         }
         
         current += bitmap.pitch;
@@ -452,7 +452,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
 
   {
     VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
-    samplerLayoutBinding.binding = 2;
+    samplerLayoutBinding.binding = 1;
     samplerLayoutBinding.descriptorCount = 1;
     samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     samplerLayoutBinding.pImmutableSamplers = nullptr;
@@ -514,7 +514,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 2;
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
     vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions; // Optional
     vertexInputInfo.vertexAttributeDescriptionCount = 2;
     vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions; // Optional
@@ -571,7 +571,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
 
     descriptorWrites/*[1]*/.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorWrites/*[1]*/.dstSet = descriptorSet/*s[i]*/;
-    descriptorWrites/*[1]*/.dstBinding = 2;
+    descriptorWrites/*[1]*/.dstBinding = 1;
     descriptorWrites/*[1]*/.dstArrayElement = 0;
     descriptorWrites/*[1]*/.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     descriptorWrites/*[1]*/.descriptorCount = 1;
@@ -614,9 +614,8 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
     fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragShaderStageInfo.module = /*output.fragShaderModule*/output.shader_loader->load(shader::image_frag);
+    fragShaderStageInfo.module = output.shader_loader->load(shader::image_frag);
     fragShaderStageInfo.pName = "main";
-    // fragShaderStageInfo.pSpecializationInfo = &fragShaderSpecializationInfo;
 
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
     
@@ -690,7 +689,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
       vkUnmapMemory(output.device, vertexBufferMemory);
     }
     
-    return {graphicsPipeline, pipelineLayout, output.renderpass, 6, 2, 0, 0, /*push_constants*/{}, {{0, vertexBuffer}, {12, vertexBuffer}}
+    return {graphicsPipeline, pipelineLayout, output.renderpass, 6, 2, 0, 0, /*push_constants*/{}, {{0, vertexBuffer}}
             , descriptorSet, descriptorSetLayout};
   }
   

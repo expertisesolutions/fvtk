@@ -18,7 +18,7 @@ template <typename Point>
 struct box_base
 {
   typedef Point point_type;
-  point_type p1, p2;
+  point_type p1, size;
 };
 
 template <typename Point, typename Color>

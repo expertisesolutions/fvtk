@@ -31,20 +31,43 @@ const char* name (shader s)
 {
   switch (s)
   {
-  case shader::fill_solid_color_bind_frag: return "fill_solid_color_bind.out.frag";
-  case shader::triangle_bind_vertex:       return "triangle_bind.out.vert";
-  case shader::image_vertex:               return "image.out.vert";
-  case shader::image_frag:                 return "image.out.frag";
+  case shader::fill_solid_color_bind_frag: return "fill_solid_color_bind.frag.spv";
+  case shader::triangle_bind_vertex:       return "triangle_bind.vert.spv";
+  case shader::image_vertex:               return "image.vert.spv";
+  case shader::image_frag:                 return "image.frag.spv";
   default:                                 throw std::runtime_error ("Shader not found");
   }
 }
-      
+
+VkShaderStageFlagBits stage_bits (shader s)
+{
+  switch (s)
+  {
+  case shader::fill_solid_color_bind_frag: return VK_SHADER_STAGE_FRAGMENT_BIT;
+  case shader::triangle_bind_vertex:       return VK_SHADER_STAGE_VERTEX_BIT;
+  case shader::image_vertex:               return VK_SHADER_STAGE_VERTEX_BIT;
+  case shader::image_frag:                 return VK_SHADER_STAGE_FRAGMENT_BIT;
+  default:                                 throw std::runtime_error ("Shader not found");
+  };      
+}
+
 struct shader_loader
 {
   shader_loader (std::filesystem::path path
                  , VkDevice device)
     : path (path), device(device) {}
 
+  VkPipelineShaderStageCreateInfo pipeline_stage (shader s) const
+  {
+    VkPipelineShaderStageCreateInfo stage_info = {};
+    stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stage_info.stage = stage_bits (s);;
+    stage_info.module = load (s);
+    stage_info.pName = "main";
+
+    return stage_info;
+  }
+  
   VkShaderModule load(shader s) const
   {
     auto iterator = map.find(s);
