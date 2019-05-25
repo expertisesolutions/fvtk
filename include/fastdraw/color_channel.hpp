@@ -24,6 +24,15 @@ struct color_channel_traits<float>
   {
     return 1.0f;
   }
+
+  constexpr static float ratio(float n, float whole)
+  {
+    return n/whole;
+  }
+  constexpr static float ratio(float n)
+  {
+    return n/max();
+  }
 };
     
 template <typename T>
