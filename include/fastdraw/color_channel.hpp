@@ -57,7 +57,12 @@ struct color_channel_traits
 
   constexpr static float ratio (T n, T whole)
   {
-    return n;
+    return ((float)n)/whole;
+  }
+
+  constexpr static float ratio (T n)
+  {
+    return ((float)n)/max();
   }
 };
 

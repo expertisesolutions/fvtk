@@ -33,7 +33,15 @@ T apply_occlusion (U ch, T ratio
 {
   return ch * ratio;
 }
-    
+
+template <typename T, typename U>
+T apply_occlusion (U ch, T ratio
+                   , typename std::enable_if<(std::is_integral<U>::type::value && std::is_integral<T>::type::value)>::type* = nullptr)
+{
+  typedef color_channel_traits<T> channel_traits;
+  return ch * (channel_traits::ratio(ratio));
+}
+
 } }
 
 #endif

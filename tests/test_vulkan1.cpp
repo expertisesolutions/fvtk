@@ -21,7 +21,6 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-#include <X11/Xos.h>
 
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_xlib.h>
@@ -149,7 +148,7 @@ void submit_graphic_queue (VkSemaphore imageAvailableSemaphore, VkSemaphore rend
         }
 }
 
-void record_command_buffer(VkRenderPass renderPass, std::vector<VkCommandBuffer>& commandBuffers
+void record_command_buffer(VkRenderPass renderPass, VkCommandBuffer commandBuffer
                            , int imageIndex
                            , std::vector<VkFramebuffer>& swapChainFramebuffers
                            , VkExtent2D swapChainExtent
@@ -228,7 +227,7 @@ int main()
 
   XMapWindow(dpy, win);
   XStoreName(dpy, win, "VERY SIMPLE APPLICATION");
-
+  
   VkApplicationInfo ApplicationInfo;
   std::memset(&ApplicationInfo, 0, sizeof(ApplicationInfo));
   ApplicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -699,7 +698,7 @@ int main()
     // std::memcpy(data, vertices, sizeof(vertices));
 
     // vkUnmapMemory(device, vertexBufferMemory);
-    
+
 
     while(1) {
       bool check = XCheckWindowEvent(dpy, win, KeyPressMask | ExposureMask, &xev);

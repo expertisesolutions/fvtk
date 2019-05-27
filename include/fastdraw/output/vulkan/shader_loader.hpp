@@ -53,6 +53,7 @@ VkShaderStageFlagBits stage_bits (shader s)
 
 struct shader_loader
 {
+  shader_loader () = default;
   shader_loader (std::filesystem::path path
                  , VkDevice device)
     : path (path), device(device) {}

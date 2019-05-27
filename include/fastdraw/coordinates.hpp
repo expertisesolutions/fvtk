@@ -20,12 +20,26 @@ T proportion (float v, T whole)
   return v*whole;
 }
 
+template <typename T, typename U>
+T proportion (T value, U whole
+              , typename std::enable_if<std::is_integral<T>::value && std::is_integral<U>::value>::type* = nullptr)
+{
+  return value;
+}
+  
 template <typename T>
 float ratio (float v, T whole)
 {
   return v;
 }
 
+template <typename T, typename U>
+float ratio (T v, U whole
+             , typename std::enable_if<std::is_integral<T>::value && std::is_integral<U>::value>::type* = nullptr)
+{
+  return ((float)v)/whole;
+}
+  
 }
     
 }
