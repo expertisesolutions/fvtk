@@ -1,0 +1,14 @@
+
+import testing : run ;
+
+project ftk ;
+
+alias ftk : /fastdraw//fastdraw : : : <include>include <cxxflags>-std=c++17 <linkflags>-lstdc++fs
+ ;
+
+alias testsuite :
+# [ run tests/test1.cpp fastdraw ]
+# [ run tests/test_gl1.cpp fastdraw x11 gl glu glew ]
+# [ run tests/opengl1.cpp fastdraw x11 gl glu glew glfw ]
+ [ run tests/text_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /glfw//glfw /hb//hb /ft2//ft2 ]
+ ;
