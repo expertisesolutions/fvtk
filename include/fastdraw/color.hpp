@@ -10,8 +10,6 @@
 #ifndef FASTDRAW_COLOR_HPP
 #define FASTDRAW_COLOR_HPP
 
-#include <fastdraw/color_algorithm.hpp>
-
 #include <type_traits>
 
 namespace fastdraw { namespace color {
@@ -107,15 +105,7 @@ struct color_premultiplied_rgba
     return *this;
   }
   template <typename OtherChannel>
-  color_premultiplied_rgba<Channel> blend_with_src (color_premultiplied_rgba<OtherChannel> src)
-  {
-    return {
-              color::premultiplied_blend(r, src.r, src.a)
-            , color::premultiplied_blend(g, src.g, src.a)
-            , color::premultiplied_blend(b, src.b, src.a)
-            , color::premultiplied_blend(a, src.a, src.a)
-           };
-  }
+  color_premultiplied_rgba<Channel> blend_with_src (color_premultiplied_rgba<OtherChannel> src);
 };
 
 template <typename T>

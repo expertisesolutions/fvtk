@@ -14,6 +14,7 @@
 #include <fastdraw/object/box.hpp>
 #include <fastdraw/coordinates.hpp>
 #include <fastdraw/color.hpp>
+#include <fastdraw/color_algorithm.hpp>
 
 #include <vector>
 #include <stdexcept>

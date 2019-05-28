@@ -37,7 +37,7 @@ template <typename T, typename U>
 float ratio (T v, U whole
              , typename std::enable_if<std::is_integral<T>::value && std::is_integral<U>::value>::type* = nullptr)
 {
-  return ((float)v)/whole;
+  return 2*(((float)v)/whole) - 1.0f;
 }
   
 }

@@ -114,12 +114,23 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
 
   std::cout << "width " << texture_width << " height " << texture_height << " pen_y " << pen_y << std::endl;
 
-  if (object::text_scale const* scale = std::get_if<object::text_scale>(&text.size_information))
-    error = FT_Set_Pixel_Sizes(face, 0, texture_height - 20); /* set character size */
-  else
-    error = FT_Set_Char_Size (face, 20 << 6, 0, 300, 0);
-  if (error)
-    throw uint32_t{};
+  auto fixup = texture_height / 10;
+
+  // should do binary search
+  do
+  {
+    if (object::text_scale const* scale = std::get_if<object::text_scale>(&text.size_information))
+      error = FT_Set_Pixel_Sizes(face, 0, texture_height - fixup); /* set character size */
+    else
+      error = FT_Set_Char_Size (face, 20 << 6, 0, 300, 0);
+    if (error)
+      throw uint32_t{};
+
+    std::cout << "Face height " << (face->size->metrics.height >> 6) << std::endl;
+
+    fixup += texture_height / 20;
+  }
+  while ( (face->size->metrics.height >> 6) > texture_height - 2);
 
   // hb_face_t* hb_face = ::hb_ft_face_create (face, nullptr);
   // if (!hb_face)
@@ -181,22 +192,9 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     FT_UInt glyph_index = glyph_info[i].codepoint;
     FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT);
     std::cout << "glyph index " << glyph_index << std::endl;
-    //OutputDebugString(dbg_info);
-
-    // FT_Size_RequestRec req;
-    // error = FT_Request_Size (face, &req);
-    // if (error)
-    //   throw -1;
-
-    // std::cout << "size is " << req.width << "x" << req.height << std::endl;
-  
     
     /* convert to an anti-aliased bitmap */
     FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
-
-    // FreeTypeDrawBitmap(dc, &face->glyph->bitmap, pen_x +
-    //                    face->glyph->bitmap_left,
-    //                    yBaseLine - ft_face->glyph->bitmap_top);
 
     FT_Bitmap bitmap = face->glyph->bitmap;
     std::cout << "size " << bitmap.width << 'x' << bitmap.rows << std::endl;
@@ -207,11 +205,9 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     {
       int di = (pen_y - face->glyph->bitmap_top)*texture_width*sizeof(float) + pen_x*sizeof(float) + face->glyph->bitmap_left*sizeof(float);
       std::cout << "di " << di << std::endl;
-      unsigned char* current = bitmap.buffer;
+      uint8_t* current = bitmap.buffer;
       for (decltype(bitmap.rows) j = 0; j != bitmap.rows; ++j)
       {
-        // std::cout << "stride " << bitmap.pitch << std::endl;
-
         for (auto i = static_cast<decltype(bitmap.width)>(0); i != bitmap.width; ++i)
         {
           typedef color::color_traits<Color> color_traits;
@@ -222,30 +218,21 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
           auto pcolor = color_traits::to_premultiplied_alpha(text.fill_color);
           color::color_premultiplied_rgba<uint8_t> current_color;
 
-          // current_color.r = unratio (color_traits::parametric_domain_ratio
-          //   (color_traits::r(text.color), color_traits::max(), dst_color_traits::max())
-          //   * dst_color_traits::ratio (current[i], dst_color_traits::max()));
+          current_color = color::apply_occlusion(pcolor, current[i]);
 
-          // current_color.r = color_traits::r(text.color) * ratio(current[i], dst_color_channel_traits::max());
-          current_color.r = color::apply_occlusion<uint8_t>(color_traits::red(pcolor), current[i]);
-          current_color.g = color::apply_occlusion<uint8_t>(color_traits::green(pcolor), current[i]);
-          current_color.b = color::apply_occlusion<uint8_t>(color_traits::blue(pcolor), current[i]);
-          current_color.a = color::apply_occlusion<uint8_t>(color_traits::alpha(pcolor), current[i]);
-
+          // little or big?
           char* data_ = static_cast<char*>(data);
-          data_[di + i*4 + 0] = current_color.red();
-          data_[di + i*4 + 1] = current_color.green();
-          data_[di + i*4 + 2] = current_color.blue();
-          data_[di + i*4 + 3] = current_color.alpha();
-          //std::cout << "text_fill.a " << color_traits::alpha(text.fill_color) << " gray " << (int)current[i] << " alpha " << (int)current_color.alpha() << std::endl;
+          std::memcpy (&data_[di + i * 4], &current_color, sizeof(uint32_t));
         }
-        
+
         current += bitmap.pitch;
         di += texture_width*sizeof(float);
       }
     }
   
     pen_x += face->glyph->advance.x >> 6 /* 26.6 FF */;
+    if (pen_x + (face->size->metrics.max_advance >> 6) >= texture_width)
+      break;
   }
 
   vkUnmapMemory(output.device, staging_pair.second);
@@ -672,10 +659,10 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
             , 0.0f, 0.0f
         };
 
-      // for (int i = 0; i != 12; i += 2)
-      // {        
-      //   std::cout << "x: " << vertices[i] << " y: " << vertices[i+1] << std::endl;
-      // }
+      for (int i = 0; i != 12; i += 2)
+      {        
+        std::cout << "x: " << vertices[i] << " y: " << vertices[i+1] << std::endl;
+      }
 
       auto findMemoryType =
         [] (uint32_t typeFilter, VkMemoryPropertyFlags properties, VkPhysicalDevice physicalDevice) -> uint32_t
