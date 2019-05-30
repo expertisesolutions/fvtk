@@ -126,20 +126,23 @@ void on_expose (backend::vulkan<Loop> const& backend, toplevel_window<vulkan<Loo
   typedef int coord_type;
   typedef fastdraw::point<coord_type> point_type;
   typedef fastdraw::color::color_premultiplied_rgba<uint8_t> color_type;
-  // typedef fastdraw::object::fill_text<point_type, std::string, color_type> text_type;
+  typedef fastdraw::object::fill_text<point_type, std::string, color_type> text_type;
   typedef fastdraw::object::fill_box<point_type, color_type> box_type;
   color_type transparent_blue {0, 0, 128, 128};
-  // text_type text { {{50, 100}, {300, 100}, "/usr/share/fonts/TTF/DejaVuSans.ttf", "Hello World"
-  //                   , {fastdraw::object::text_scale{true, true}}
-  //                   , fastdraw::object::text_align::center
-  //                   , fastdraw::object::text_align::center
-  //                   }, transparent_blue };
+  color_type transparent_red {128, 0, 0, 128};
+  text_type text { {{50, 100}, {1000, 200}, "/usr/share/fonts/TTF/DejaVuSans.ttf", "Hello World"
+                    , {fastdraw::object::text_scale{true, true}}
+                    , fastdraw::object::text_align::center
+                    , fastdraw::object::text_align::center
+                    }, transparent_red };
 
   box_type box { {{50, 100}, {300, 100}}, transparent_blue };
+
+  static_cast<void>(box);
   
   // do something
   auto output_info = fastdraw::output::vulkan::create_output_specific_object
-    (window.window.voutput, box);
+    (window.window.voutput, text);
 
   // record buffer
   VkCommandPool commandPool;

@@ -90,6 +90,10 @@ struct x11_base
                   << " is button press? " << (xev.type == ButtonPress) << std::endl;
         if (xev.type == Expose)
           exposure_signal();
+        else if (xev.type == KeyPress)
+          {}
+        else if (xev.type == ButtonPress)
+          {}
       }
       else
       {
