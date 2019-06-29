@@ -15,7 +15,6 @@
 #include <ftk/ui/backend/x11_base_fwd.hpp>
 #include <ftk/ui/backend/uv_fwd.hpp>
 #include <ftk/ui/backend/vulkan_draw.hpp>
-#include <ftk/ui/backend/vulkan_error.hpp>
 
 #include <cstring>
 #include <array>
@@ -23,6 +22,7 @@
 #include <optional>
 #include <cassert>
 #include <iostream>
+#include <mutex>
 
 namespace ftk { namespace ui { namespace backend {
 
@@ -48,6 +48,8 @@ struct vulkan : WindowingBase
     VkQueue presentation_queue;
     VkSwapchainKHR swapChain;
     VkFence executionFinished;
+    VkQueue copy_buffer_queue;
+    std::unique_ptr<std::mutex> copy_buffer_queue_mutex {new std::mutex};
   };
 
   window create_window (int width, int height) const;
