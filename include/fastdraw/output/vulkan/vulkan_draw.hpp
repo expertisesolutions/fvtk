@@ -16,6 +16,7 @@ namespace fastdraw { namespace output { namespace vulkan {
 
 void draw (vulkan_draw_info const& info, VkCommandBuffer commandBuffer)
 {
+  std::cout << "draw recording buffer" << std::endl;
   if (!info.pipeline)
     return;
   

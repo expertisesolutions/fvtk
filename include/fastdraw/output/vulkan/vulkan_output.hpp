@@ -95,7 +95,7 @@ struct replace_visitor
     return {};
   }
 };
-    
+
 template <typename Coord, typename Point, typename Color, template <typename> class Container, typename WindowingBase>
 vulkan::vulkan_output<Coord, Point, Color, WindowingBase>
 output (fastdraw::scene<Coord, Point, Color, Container>& scene

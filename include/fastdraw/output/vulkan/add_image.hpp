@@ -7,13 +7,13 @@
 // See http://www.boost.org/libs/foreach for documentation
 //
 
-#ifndef FASTDRAW_OUTPUT_VULKAN_ADD_TEXT_HPP
-#define FASTDRAW_OUTPUT_VULKAN_ADD_TEXT_HPP
+#ifndef FASTDRAW_OUTPUT_VULKAN_ADD_IMAGE_HPP
+#define FASTDRAW_OUTPUT_VULKAN_ADD_IMAGE_HPP
 
 #include <fastdraw/output/vulkan/vulkan_output_info.hpp>
 #include <fastdraw/output/vulkan/vulkan_draw_info.hpp>
 #include <fastdraw/output/vulkan/buffer.hpp>
-#include <fastdraw/object/text.hpp>
+#include <fastdraw/object/image.hpp>
 #include <fastdraw/coordinates.hpp>
 #include <fastdraw/color.hpp>
 
@@ -27,10 +27,18 @@
 #include <ft2build.h>
 #include FT_TRUETYPE_TABLES_H /* Freetype2 OS/2 font table. */
 
+#include <png.h>
+
+#undef CHRONO_START
+#undef CHRONO_COMPARE
+#define CHRONO_START()  auto before = std::chrono::high_resolution_clock::now();
+#define CHRONO_COMPARE()  {auto after = std::chrono::high_resolution_clock::now(); auto diff = after - before; if (diff > std::chrono::microseconds(100)) { std::cout << "Passed " << std::chrono::duration_cast<std::chrono::microseconds>(diff).count() << " at " <<  __FILE__ << ":" << __LINE__ << std::endl; before = after;} }
+
+
 namespace fastdraw { namespace output { namespace vulkan {
 
-template <typename Point, typename String, typename Color, typename WindowingBase>
-vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase>& output, object::fill_text<Point, String, Color> const& text
+template <typename Point, typename WindowingBase>
+vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase>& output, object::image<Point> const& image
                                                , VkPipelineRasterizationStateCreateInfo rasterizer
                                                = {VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO // sType
                                                   , nullptr                                                  // pNext
@@ -84,161 +92,44 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
   if(colorBlending.attachmentCount == 1 && colorBlending.pAttachments == nullptr)
     colorBlending.pAttachments = &colorBlendAttachment;
 
-  static FT_Library  library;
-  static bool library_initialized;
-
-  if (!library_initialized)
-  {
-    auto error = FT_Init_FreeType( &library );
-    if (error)
-    {
-      throw -1;
-    }
-  }
-
-  FT_Face face;
-  auto error = FT_New_Face (library, text.face.c_str()
-                            , 0, &face);
-  if (error)
-  {
-    std::cout << "error " << error << std::endl;
-    throw float{};
-  }
-
-  auto whole_width = output.swapChainExtent.width;
-  auto whole_height = output.swapChainExtent.height;
-
-  auto texture_width = coordinates::proportion(text.size.x, whole_width);
-  auto texture_height = coordinates::proportion(text.size.y, whole_height);
-  unsigned int pen_y = (texture_height / 3) * 2;
-
-  std::cout << "width " << texture_width << " height " << texture_height << " pen_y " << pen_y << std::endl;
-
-  auto fixup = texture_height / 10;
-
-  // should do binary search
-  do
-  {
-    if (object::text_scale const* scale = std::get_if<object::text_scale>(&text.size_information))
-      error = FT_Set_Pixel_Sizes(face, 0, texture_height - fixup); /* set character size */
-    else
-      error = FT_Set_Char_Size (face, 20 << 6, 0, 300, 0);
-    if (error)
-      throw uint32_t{};
-
-    std::cout << "Face height " << (face->size->metrics.height >> 6) << std::endl;
-
-    fixup += texture_height / 20;
-  }
-  while ( (face->size->metrics.height >> 6) > texture_height - 2);
-
-  // hb_face_t* hb_face = ::hb_ft_face_create (face, nullptr);
-  // if (!hb_face)
-  //   throw -1;
-
-  hb_font_t* hb_font = ::hb_ft_font_create (face, nullptr);
-  if (!hb_font)
-    throw long{};
-
-  hb_buffer_t* buffer;
-  buffer = hb_buffer_create ();
-
-  hb_buffer_add_utf8 (buffer,
-                      text.text.c_str(),
-                      text.text.size(),
-                      0,
-                      text.text.size());
-  hb_buffer_set_direction(buffer, HB_DIRECTION_LTR);
-
-  hb_feature_t feature;
-  // The leak most probably doesn't depend on the type of the feature.
-  feature.tag = hb_tag_from_string("kern", 4);
-  feature.value = 0;
-  feature.start = 0;
-  feature.end = (unsigned int) -1;
-  //int num_features = 1;
-  hb_shape(hb_font, buffer, &feature, 1);
-
-
-  int glyph_count = hb_buffer_get_length(buffer);
-  hb_glyph_info_t *glyph_info = hb_buffer_get_glyph_infos(buffer, 0);
-
-  std::cout << "glyph count " << glyph_count << std::endl;
-
-  if (FT_HAS_KERNING (face))
-  {
-    std::cout << "has kerning" << std::endl;
-  }
+  CHRONO_START()
   
-  int pen_x = 0;
+  auto size = image.stride*image.height;
+  std::cout << "size " << size << std::endl;
 
-  ///
-  // calculate the optimal texture size
+  CHRONO_COMPARE()
   
-  auto size = texture_width * texture_height * sizeof(float);
-
-  std::cout << "texture size w: " << texture_width << " h: " << texture_height << std::endl;
-
   auto staging_pair = vulkan::create_buffer(output.device, size, output.physical_device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  CHRONO_COMPARE()
+  std::cout << __FILE__ ":" << __LINE__ << std::endl;
 
   void* data;
+  CHRONO_COMPARE()
   vkMapMemory(output.device, staging_pair.second, 0, size, 0, &data);
+  CHRONO_COMPARE()
+  std::cout << __FILE__ ":" << __LINE__ << std::endl;
 
-  std::fill (static_cast<uint32_t*>(data), static_cast<uint32_t*>(data) + texture_width * texture_height
-             , 0x00000000);
 
-  for (int i = 0; i != glyph_count; ++i) 
-  {
-    FT_UInt glyph_index = glyph_info[i].codepoint;
-    FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT);
-    std::cout << "glyph index " << glyph_index << std::endl;
-    
-    /* convert to an anti-aliased bitmap */
-    FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
+  std::cout << __FILE__ ":" << __LINE__ << std::endl;
+  CHRONO_COMPARE()
+  std::memcpy (data, image.buffer, size);
+  CHRONO_COMPARE()
 
-    FT_Bitmap bitmap = face->glyph->bitmap;
-    std::cout << "size " << bitmap.width << 'x' << bitmap.rows << std::endl;
-    std::cout << "advance " << (face->glyph->advance.x >> 6)<< std::endl;
-    std::cout << "bitmap type " << (int)bitmap.pixel_mode << " bitmap_left " << face->glyph->bitmap_left
-              << " bitmap top " << face->glyph->bitmap_top << std::endl;
-    
-    {
-      int di = (pen_y - face->glyph->bitmap_top)*texture_width*sizeof(float) + pen_x*sizeof(float) + face->glyph->bitmap_left*sizeof(float);
-      std::cout << "di " << di << std::endl;
-      uint8_t* current = bitmap.buffer;
-      for (decltype(bitmap.rows) j = 0; j != bitmap.rows; ++j)
-      {
-        for (auto i = static_cast<decltype(bitmap.width)>(0); i != bitmap.width; ++i)
-        {
-          typedef color::color_traits<Color> color_traits;
-          typedef typename color_traits::channel color_channel;
-          typedef color::color_channel_traits<color_channel> color_channel_traits;
-          typedef color::color_channel_traits<uint8_t> dst_color_channel_traits;
-
-          auto pcolor = color_traits::to_premultiplied_alpha(text.fill_color);
-          color::color_premultiplied_rgba<uint8_t> current_color;
-
-          current_color = color::apply_occlusion(pcolor, current[i]);
-
-          // little or big?
-          char* data_ = static_cast<char*>(data);
-          std::memcpy (&data_[di + i * 4], &current_color, sizeof(uint32_t));
-        }
-
-        current += bitmap.pitch;
-        di += texture_width*sizeof(float);
-      }
-    }
-  
-    pen_x += face->glyph->advance.x >> 6 /* 26.6 FF */;
-    if (pen_x + (face->size->metrics.max_advance >> 6) >= texture_width)
-      break;
-  }
-
+  std::cout << __FILE__ ":" << __LINE__ << std::endl;
+  CHRONO_COMPARE()
   vkUnmapMemory(output.device, staging_pair.second);
+  CHRONO_COMPARE()
+
+  std::cout << __FILE__ ":" << __LINE__ << std::endl;
+  
+  auto texture_width = image.width, texture_height = image.height;
+
+  std::cout << "width " << texture_width << " height " << image.height << std::endl;
 
   VkImage textureImage;
   VkDeviceMemory textureImageMemory;
+
+  auto format = VK_FORMAT_B8G8R8A8_UNORM; //VK_FORMAT_R8G8B8A8_UNORM; RGBA vs ARGB
   
   VkImageCreateInfo imageInfo = {};
   imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -248,7 +139,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
   imageInfo.extent.depth = 1;
   imageInfo.mipLevels = 1;
   imageInfo.arrayLayers = 1;
-  imageInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+  imageInfo.format = format;
   imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
   imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -256,9 +147,12 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
   imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
   //imageInfo.flags = 0; // Optional
 
+  CHRONO_COMPARE()
+  std::cout << __FILE__ ":" << __LINE__ << std::endl;
   if (vkCreateImage(output.device, &imageInfo, nullptr, &textureImage) != VK_SUCCESS) {
     throw std::runtime_error("failed to create image!");
   }
+  CHRONO_COMPARE()
 
   VkMemoryRequirements memRequirements;
   vkGetImageMemoryRequirements(output.device, textureImage, &memRequirements);
@@ -270,12 +164,17 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     allocInfo.memoryTypeIndex = vulkan::find_memory_type(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
                                                          , output.physical_device);
 
+  CHRONO_COMPARE()
     if (vkAllocateMemory(output.device, &allocInfo, nullptr, &textureImageMemory) != VK_SUCCESS) {
       throw std::runtime_error("failed to allocate image memory!");
     }
+  CHRONO_COMPARE()
   }
 
+  CHRONO_COMPARE()
   vkBindImageMemory(output.device, textureImage, textureImageMemory, 0);
+  CHRONO_COMPARE()
+  std::cout << __FILE__ ":" << __LINE__ << std::endl;
 
   VkCommandBuffer commandBuffer;
   {
@@ -285,14 +184,19 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     allocInfo.commandPool = output.command_pool;
     allocInfo.commandBufferCount = 1;
 
+  CHRONO_COMPARE()
     vkAllocateCommandBuffers(output.device, &allocInfo, &commandBuffer);
+  CHRONO_COMPARE()
   }
 
+  std::cout << __FILE__ ":" << __LINE__ << std::endl;
   VkCommandBufferBeginInfo beginInfo = {};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
   
+  CHRONO_COMPARE()
   vkBeginCommandBuffer(commandBuffer, &beginInfo);
+  CHRONO_COMPARE()
 
   // VkBufferCopy copyRegion = {};
   // copyRegion.size = size;
@@ -319,6 +223,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
   barrier.srcAccessMask = 0; // TODO
   barrier.dstAccessMask = 0; // TODO
 
+  CHRONO_COMPARE()
   vkCmdPipelineBarrier(
     commandBuffer,
     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT /* TODO */, VK_PIPELINE_STAGE_TRANSFER_BIT /* TODO */,
@@ -327,7 +232,9 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     0, nullptr,
     1, &barrier
   );
+  CHRONO_COMPARE()
 
+  std::cout << __FILE__ ":" << __LINE__ << std::endl;
   VkBufferImageCopy region = {};
   region.bufferOffset = 0;
   region.bufferRowLength = 0;
@@ -345,6 +252,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
                         1
   };
   
+  CHRONO_COMPARE()
   vkCmdCopyBufferToImage(
                          commandBuffer,
                          staging_pair.first,
@@ -353,6 +261,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
                          1,
                          &region
                          );  
+  CHRONO_COMPARE()
 
   barrier.oldLayout = /*oldLayout*/ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   barrier.newLayout = /*newLayout*/ VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -360,6 +269,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
   barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
   barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
+  CHRONO_COMPARE()
   vkCmdPipelineBarrier(
     commandBuffer,
     VK_PIPELINE_STAGE_TRANSFER_BIT /* TODO */, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT /* TODO */,
@@ -368,24 +278,32 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     0, nullptr,
     1, &barrier
   );
+  CHRONO_COMPARE()
+  std::cout << __FILE__ ":" << __LINE__ << std::endl;
 
 
   vkEndCommandBuffer(commandBuffer);
+  CHRONO_COMPARE()
 
   VkSubmitInfo submitInfo = {};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers = &commandBuffer;
   
+  CHRONO_COMPARE()
   auto submit_error = vkQueueSubmit(output.graphics_queue, 1, &submitInfo, VK_NULL_HANDLE);
+  CHRONO_COMPARE()
   vkQueueWaitIdle(output.graphics_queue);
+  CHRONO_COMPARE()
 
   if (submit_error)
     throw -1;
 
+  CHRONO_COMPARE()
   vkFreeCommandBuffers(output.device, output.command_pool, 1, &commandBuffer);
   vkDestroyBuffer(output.device, staging_pair.first, nullptr);
   vkFreeMemory(output.device, staging_pair.second, nullptr);
+  CHRONO_COMPARE()
 
   // image view
   VkImageView textureImageView;
@@ -396,16 +314,18 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = textureImage;
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+    viewInfo.format = format;
     viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     viewInfo.subresourceRange.baseMipLevel = 0;
     viewInfo.subresourceRange.levelCount = 1;
     viewInfo.subresourceRange.baseArrayLayer = 0;
     viewInfo.subresourceRange.layerCount = 1;
 
+  CHRONO_COMPARE()
     if (vkCreateImageView(output.device, &viewInfo, nullptr, &textureImageView) != VK_SUCCESS) {
       throw std::runtime_error("failed to create texture image view!");
     }
+  CHRONO_COMPARE()
 
     VkSamplerCreateInfo samplerInfo = {};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -431,9 +351,13 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     samplerInfo.minLod = 0.0f;
     samplerInfo.maxLod = 0.0f;
 
+  std::cout << __FILE__ ":" << __LINE__ << std::endl;
+  CHRONO_COMPARE()
     if (vkCreateSampler(output.device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
       throw std::runtime_error("failed to create texture sampler!");
     }
+  CHRONO_COMPARE()
+  std::cout << __FILE__ ":" << __LINE__ << std::endl;
     
   }
 
@@ -451,10 +375,13 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     layoutInfo.bindingCount = 1; //static_cast<uint32_t>(bindings.size());
     layoutInfo.pBindings = /*bindings.data()*/&samplerLayoutBinding;
 
+  CHRONO_COMPARE()
     VkDescriptorSetLayout descriptorSetLayout;
     if (vkCreateDescriptorSetLayout(output.device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
       throw std::runtime_error("failed to create descriptor set layout!");
     }
+  CHRONO_COMPARE()
+  std::cout << __FILE__ ":" << __LINE__ << std::endl;
 
     VkDescriptorPool descriptorPool;
     /*std::array<*/VkDescriptorPoolSize/*, 2>*/ poolSizes = {};
@@ -469,9 +396,11 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     poolInfo.pPoolSizes = &poolSizes/*.data()*/;
     poolInfo.maxSets = 1/*static_cast<uint32_t>(swapChainImages.size())*/;
 
+  CHRONO_COMPARE()
      if (vkCreateDescriptorPool(output.device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor pool!");
      }    
+  CHRONO_COMPARE()
     // for (size_t i = 0; i < swapChainImages.size(); i++) {
     // VkDescriptorBufferInfo bufferInfo = {};
     // bufferInfo.buffer = uniformBuffers[i];
@@ -541,9 +470,11 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
      allocInfo.descriptorSetCount = 1;
      allocInfo.pSetLayouts = /*layouts.data()*/&descriptorSetLayout;
 
+  CHRONO_COMPARE()
      if (vkAllocateDescriptorSets(output.device, &allocInfo, &descriptorSet) != VK_SUCCESS) {
        throw std::runtime_error("failed to allocate descriptor sets!");
      }
+  CHRONO_COMPARE()
 
      // VkDescriptorBufferInfo bufferInfo = {};
      // bufferInfo.buffer = uniformBuffers[i];
@@ -632,9 +563,11 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 1; // Optional
     pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // Optional
+  CHRONO_COMPARE()
     if (vkCreatePipelineLayout(output.device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
       throw std::runtime_error("failed to create pipeline layout!");
     }
+  CHRONO_COMPARE()
 
     VkGraphicsPipelineCreateInfo pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -656,19 +589,28 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     pipelineInfo.basePipelineIndex = -1; // Optional
 
     VkPipeline graphicsPipeline;
+  CHRONO_COMPARE()
     if (vkCreateGraphicsPipelines(output.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
       throw std::runtime_error("failed to create graphics pipeline!");
     }
+  CHRONO_COMPARE()
 
     VkBuffer vertexBuffer;
     {
+      auto whole_width = output.swapChainExtent.height;
+      auto whole_height = output.swapChainExtent.width;
+      // auto whole_width = output.swapChainExtent.width;
+      // auto whole_height = output.swapChainExtent.height;
+
+      auto scale = 4;
+      
       const float vertices[] =
-        {     coordinates::ratio(text.p1.x, whole_width)              , coordinates::ratio(text.p1.y, whole_height)
-            , coordinates::ratio(text.p1.x + text.size.x, whole_width), coordinates::ratio(text.p1.y, whole_height)              
-            , coordinates::ratio(text.p1.x + text.size.x, whole_width), coordinates::ratio(text.p1.y + text.size.y, whole_height)
-            , coordinates::ratio(text.p1.x + text.size.x, whole_width), coordinates::ratio(text.p1.y + text.size.y, whole_height)
-            , coordinates::ratio(text.p1.x, whole_width)              , coordinates::ratio(text.p1.y + text.size.y, whole_height)
-            , coordinates::ratio(text.p1.x, whole_width)              , coordinates::ratio(text.p1.y, whole_height)
+        {     coordinates::ratio(image.pos.x, whole_width)              , coordinates::ratio(image.pos.y, whole_height)
+            , coordinates::ratio(image.pos.x + image.size.x*scale, whole_width), coordinates::ratio(image.pos.y, whole_height)              
+            , coordinates::ratio(image.pos.x + image.size.x*scale, whole_width), coordinates::ratio(image.pos.y + image.size.y*scale, whole_height)
+            , coordinates::ratio(image.pos.x + image.size.x*scale, whole_width), coordinates::ratio(image.pos.y + image.size.y*scale, whole_height)
+            , coordinates::ratio(image.pos.x, whole_width)              , coordinates::ratio(image.pos.y + image.size.y*scale, whole_height)
+            , coordinates::ratio(image.pos.x, whole_width)              , coordinates::ratio(image.pos.y, whole_height)
         };
       const float coordinates[] =
         {   0.0f, 0.0f
@@ -690,10 +632,10 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
           // , 0.0f, 0.0f, 0.0f, 1.0f
         };
 
-      // for (int i = 0; i != 12; i += 2)
-      // {        
-      //   std::cout << "x: " << vertices[i] << " y: " << vertices[i+1] << std::endl;
-      // }
+      for (int i = 0; i != 12; i += 2)
+      {        
+        std::cout << "x: " << vertices[i] << " y: " << vertices[i+1] << std::endl;
+      }
 
       auto findMemoryType =
         [] (uint32_t typeFilter, VkMemoryPropertyFlags properties, VkPhysicalDevice physicalDevice) -> uint32_t
@@ -749,16 +691,21 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
                                                                          + sizeof(transform_matrix)
                                                                          , output.physical_device);
 
+  CHRONO_COMPARE()
       void* data;
       vkMapMemory(output.device, vertexBufferMemory, 0, sizeof(vertices) + sizeof(coordinates) + sizeof(transform_matrix), 0, &data);
     
+  CHRONO_COMPARE()
       std::memcpy(data, vertices, sizeof(vertices));
       std::memcpy(&static_cast<char*>(data)[sizeof(vertices)], coordinates, sizeof(coordinates));
       std::memcpy(&static_cast<char*>(data)[sizeof(vertices) + sizeof(coordinates)], transform_matrix, sizeof(transform_matrix));
 
+  CHRONO_COMPARE()
       vkUnmapMemory(output.device, vertexBufferMemory);
+  CHRONO_COMPARE()
     }
     
+  CHRONO_COMPARE()
     return {graphicsPipeline, pipelineLayout, output.renderpass, 6, 1, 0, 0, /*push_constants*/{}, {{0, vertexBuffer}, {0, vertexBuffer}}
             , descriptorSet, descriptorSetLayout};
   }
