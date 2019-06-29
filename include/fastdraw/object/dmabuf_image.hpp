@@ -7,8 +7,8 @@
 // See http://www.boost.org/libs/foreach for documentation
 //
 
-#ifndef FASTDRAW_OBJECTS_IMAGE_HH
-#define FASTDRAW_OBJECTS_IMAGE_HH
+#ifndef FASTDRAW_OBJECTS_DMABUF_IMAGE_HH
+#define FASTDRAW_OBJECTS_DMABUF_IMAGE_HH
 
 #include <fastdraw/point.hpp>
 
@@ -18,14 +18,17 @@
 namespace fastdraw { namespace object {
 
 template <typename Point>
-struct image
+struct dmabuf_image
 {
   typedef Point point_type;
   point_type pos, size;
-  void* buffer;
-  std::size_t buffer_size;
+  //void* buffer;
+  //std::size_t buffer_size;
+  int fd;
   std::size_t width, height;
   std::size_t stride;
+  std::uint32_t format;
+  std::uint32_t modifier_hi, modifier_lo;
 };
     
 } }
