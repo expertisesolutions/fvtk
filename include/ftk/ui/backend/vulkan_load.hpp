@@ -196,6 +196,24 @@ inline vulkan_buffer_token<U> load_buffer
                CHRONO_COMPARE()
                std::cout << __FILE__ ":" << __LINE__ << std::endl;
 
+               VkImageViewCreateInfo viewInfo = {};
+               viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+               viewInfo.image = pb->vulkan_image;
+               viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+               viewInfo.format = format;
+               viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+               viewInfo.subresourceRange.baseMipLevel = 0;
+               viewInfo.subresourceRange.levelCount = 1;
+               viewInfo.subresourceRange.baseArrayLayer = 0;
+               viewInfo.subresourceRange.layerCount = 1;
+
+               CHRONO_COMPARE()
+               if (vkCreateImageView(window->window.voutput.device, &viewInfo, nullptr, &pb->vulkan_image_view) != VK_SUCCESS) {
+                 throw std::runtime_error("failed to create texture image view!");
+               }
+               CHRONO_COMPARE()
+                 
+               
                VkCommandPool command_pool;
                VkCommandPoolCreateInfo poolInfo = {};
                poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -349,7 +367,7 @@ inline vulkan_buffer_token<U> load_buffer
                  }
                  
                  CHRONO_COMPARE()
-                 vkQueueWaitIdle(window->window.voutput.graphics_queue);
+                 vkQueueWaitIdle(window->window.copy_buffer_queue);
                  CHRONO_COMPARE()
 
                  // if (submit_error)

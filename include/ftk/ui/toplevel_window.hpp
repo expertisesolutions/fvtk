@@ -16,11 +16,10 @@
 
 namespace ftk { namespace ui {
 
-struct toplevel_window_shm_buffer
+struct toplevel_window_image
 {
-  void* buffer;
+  VkImageView image_view;
   std::int32_t x, y, width, height;
-  std::uint32_t stride;
 };
     
 template <typename Backend>
@@ -48,8 +47,8 @@ struct toplevel_window
   //   shm_buffers.push_back ({buffer, x, y, width, height, stride});
   // }
 
-  // // should be a fastdraw something
-  // std::vector<shm_buffer> shm_buffers;
+  // should be a fastdraw something
+  std::vector<toplevel_window_image> images;;
   
   // Backend* backend_;
   mutable typename Backend::window window;
