@@ -40,9 +40,11 @@ struct vulkan_thread_pool
 
   vulkan_thread_pool (VkDevice device, int family_index
                       , int queue_index_first, int queue_index_last
-                      , int command_buffers_per_queue = 3)
+                      , unsigned int command_buffers_per_queue = 3
+                      , unsigned int threads)
     : device(device), family_index (family_index)
     , threads_in_use_total (0u), command_buffers_per_queue(command_buffers_per_queue)
+    , max_threads (threads)
   {
     using fastdraw::output::vulkan::from_result;
     using fastdraw::output::vulkan::vulkan_error_code;
