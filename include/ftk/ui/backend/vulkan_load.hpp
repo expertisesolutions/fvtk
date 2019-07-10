@@ -11,6 +11,7 @@
 #define FTK_FTK_UI_BACKEND_VULKAN_LOAD_HPP
 
 #include <ftk/ui/backend/vulkan_fwd.hpp>
+#include <ftk/ui/backend/vulkan_image.hpp>
 #include <ftk/ui/ui_fwd.hpp>
 
 #include <fastdraw/output/vulkan/vulkan_draw.hpp>
@@ -91,7 +92,201 @@ bool operator>=(vulkan_buffer_token<U> lhs, vulkan_buffer_token<U> rhs)
 {
   return !(lhs.token < rhs.token);
 }
-      
+
+template <typename I>
+std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (std::filesystem::path path, I image_loader) const
+{
+  return
+  graphic_thread_pool->run
+    (
+     [path, image_loader, this] (VkCommandBuffer command_buffer, vulkan_thread_pool::queue_lockable queue_lockable) -> output_image_type
+     {
+       using fastdraw::output::vulkan::from_result;
+       using fastdraw::output::vulkan::vulkan_error_code;
+
+       std::cout << "running in a thread loop!" << std::endl;
+
+       auto image = image_loader.load (path);
+
+       auto size = image.height() * image.stride();
+
+       auto staging_pair = fastdraw::output::vulkan::create_buffer
+         (device, size, physical_device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+
+       void* data;
+       auto r = from_result(vkMapMemory(device, staging_pair.second, 0, size, 0, &data));
+       if (r != vulkan_error_code::success)
+         throw std::system_error (make_error_code(r));
+       
+       image.write_to (static_cast<char*>(data), size);
+
+       vkUnmapMemory(device, staging_pair.second);
+
+       auto format = VK_FORMAT_B8G8R8A8_UNORM; //VK_FORMAT_R8G8B8A8_UNORM; RGBA vs ARGB
+  
+       VkImageCreateInfo imageInfo = {};
+       imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+       imageInfo.imageType = VK_IMAGE_TYPE_2D;
+       imageInfo.extent.width = static_cast<uint32_t>(image.width());
+       imageInfo.extent.height = static_cast<uint32_t>(image.height());
+       imageInfo.extent.depth = 1;
+       imageInfo.mipLevels = 1;
+       imageInfo.arrayLayers = 1;
+       imageInfo.format = format;
+       imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+       imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+       imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+       imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+       imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+       //imageInfo.flags = 0; // Optional
+
+       VkImage vulkan_image;
+       r = from_result(vkCreateImage(device, &imageInfo, nullptr, &vulkan_image));
+       if (r != vulkan_error_code::success)
+         throw std::system_error (make_error_code(r));
+
+       VkMemoryRequirements memRequirements;
+       vkGetImageMemoryRequirements(device, vulkan_image, &memRequirements);
+
+       VkDeviceMemory textureImageMemory;
+       {
+         VkMemoryAllocateInfo allocInfo = {};
+         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+         allocInfo.allocationSize = memRequirements.size;
+         allocInfo.memoryTypeIndex = fastdraw::output::vulkan::find_memory_type
+           (memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physical_device);
+
+         r = from_result(vkAllocateMemory(device, &allocInfo, nullptr, &textureImageMemory));
+         if (r != vulkan_error_code::success)
+           throw std::system_error(make_error_code(r));
+       }
+
+       vkBindImageMemory(device, vulkan_image, textureImageMemory, 0);
+
+       VkImageView vulkan_image_view;
+       VkImageViewCreateInfo viewInfo = {};
+       viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+       viewInfo.image = vulkan_image;
+       viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+       viewInfo.format = format;
+       viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+       viewInfo.subresourceRange.baseMipLevel = 0;
+       viewInfo.subresourceRange.levelCount = 1;
+       viewInfo.subresourceRange.baseArrayLayer = 0;
+       viewInfo.subresourceRange.layerCount = 1;
+       
+       if (vkCreateImageView(device, &viewInfo, nullptr, &vulkan_image_view) != VK_SUCCESS) {
+         throw std::runtime_error("failed to create texture image view!");
+       }
+
+       VkCommandBufferBeginInfo beginInfo = {};
+       beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+       beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+  
+       r = from_result(vkBeginCommandBuffer(command_buffer, &beginInfo));
+       if (r != vulkan_error_code::success)
+         throw std::system_error (make_error_code(r));
+
+       VkImageMemoryBarrier barrier = {};
+       barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+       barrier.oldLayout = /*oldLayout*/ VK_IMAGE_LAYOUT_UNDEFINED;
+       barrier.newLayout = /*newLayout*/ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+       barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+       barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+       barrier.image = vulkan_image;
+       barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+       barrier.subresourceRange.baseMipLevel = 0;
+       barrier.subresourceRange.levelCount = 1;
+       barrier.subresourceRange.baseArrayLayer = 0;
+       barrier.subresourceRange.layerCount = 1;
+
+       barrier.srcAccessMask = 0;
+       barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+       barrier.srcAccessMask = 0; // TODO
+       barrier.dstAccessMask = 0; // TODO
+
+       vkCmdPipelineBarrier
+         (
+          command_buffer,
+          VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT /* TODO */, VK_PIPELINE_STAGE_TRANSFER_BIT /* TODO */,
+          0,
+          0, nullptr,
+          0, nullptr,
+          1, &barrier
+         );
+       
+       VkBufferImageCopy region = {};
+       region.bufferOffset = 0;
+       region.bufferRowLength = 0;
+       region.bufferImageHeight = 0;
+
+       region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+       region.imageSubresource.mipLevel = 0;
+       region.imageSubresource.baseArrayLayer = 0;
+       region.imageSubresource.layerCount = 1;
+
+       region.imageOffset = {0, 0, 0};
+       region.imageExtent = {
+                             image.width(),
+                             image.height(),
+                             1
+                            };
+  
+       vkCmdCopyBufferToImage
+         (
+          command_buffer,
+          staging_pair.first,
+          vulkan_image,
+          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+          1,
+          &region
+         );  
+
+       barrier.oldLayout = /*oldLayout*/ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+       barrier.newLayout = /*newLayout*/ VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+       barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+       barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+       vkCmdPipelineBarrier
+         (
+          command_buffer,
+          VK_PIPELINE_STAGE_TRANSFER_BIT /* TODO */, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT /* TODO */,
+          0,
+          0, nullptr,
+          0, nullptr,
+          1, &barrier
+         );
+
+       vkEndCommandBuffer(command_buffer);
+       
+       VkSubmitInfo submitInfo = {};
+       submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+       submitInfo.commandBufferCount = 1;
+       submitInfo.pCommandBuffers = &command_buffer;
+
+       {
+         vulkan_thread_pool::queue_lockable::lock lock (&queue_lockable);
+
+         r = from_result(vkQueueSubmit(lock.get_queue(), 1, &submitInfo, VK_NULL_HANDLE));
+         if (r != vulkan_error_code::success)
+           throw std::system_error (make_error_code(r));
+                 
+         vkQueueWaitIdle(lock.get_queue());
+
+         // if (submit_error)
+         //   throw -1;
+       }
+       vkDestroyBuffer(device, staging_pair.first, nullptr);
+       vkFreeMemory(device, staging_pair.second, nullptr);
+
+       return {vulkan_image, vulkan_image_view};
+     });
+}
+
 template <typename Loop, typename WindowingBase, typename U, typename Handler>
 inline vulkan_buffer_token<U> load_buffer
 (backend::vulkan<Loop, WindowingBase>& backend, toplevel_window<vulkan<Loop, WindowingBase>>& window
@@ -106,7 +301,8 @@ inline vulkan_buffer_token<U> load_buffer
   using buffer_type = typename vulkan_buffer_token<U>::buffer;
   buffer_type* pb = new buffer_type {buffer, width, height, stride, std::move(user_value)};
   vulkan_buffer_token<U> token {pb};
-  
+
+  auto future =
   std::async([pb, backend = &backend, window = &window, handler, token]
              {
                using fastdraw::output::vulkan::from_result;
@@ -383,7 +579,7 @@ inline vulkan_buffer_token<U> load_buffer
                handler ({}, token);
              }
     );
-    
+  static_cast<void>(future);
   CHRONO_COMPARE()
 
   return token;

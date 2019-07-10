@@ -10,6 +10,8 @@
 #ifndef FTK_FTK_UI_BACKEND_XLIB_SURFACE_HPP
 #define FTK_FTK_UI_BACKEND_XLIB_SURFACE_HPP
 
+#include <ftk/ui/backend/x11_base.hpp>
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
@@ -19,15 +21,14 @@
 
 namespace ftk { namespace ui { namespace backend {
 
-struct xlib_surface
+template <typename Loop>
+struct xlib_surface : x11_base<Loop>
 {
-  template <typename Loop>
-  xlib_surface (Loop const&) {}
+  using base = x11_base<Loop>;
+  xlib_surface (Loop const& loop) : base(loop) {}
   
-  struct window
+  struct window : x11_base<Loop>::window
   {
-    Display* x11_display;
-    Window x11_window;
     VkInstance instance;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkSurfaceKHR surface;

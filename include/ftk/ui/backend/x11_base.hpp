@@ -21,6 +21,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/XKBlib.h>
 
 namespace ftk { namespace ui { namespace backend {
 
@@ -56,17 +57,20 @@ struct x11_base
   using self_type = x11_base<Loop>;
 
   boost::signals2::signal<void ()> exposure_signal;
+  boost::signals2::signal<void (XKeyEvent)> key_signal;
+  boost::signals2::signal<void (XMotionEvent)> motion_signal;
   
   struct window
   {
-    Window win;
-    Display* display;
+    Window x11_window;
+    Display* x11_display;
 
+    window () : x11_window{}, x11_display(nullptr) {}
     window (Window win, Display* display)
-      : win(win), display(display)
+      : x11_window(win), x11_display(display)
     {
-      XMapWindow(display, win);
-      XStoreName(display, win, "VERY SIMPLE APPLICATION");
+      XMapWindow(x11_display, x11_window);
+      XStoreName(x11_display, x11_window, "VERY SIMPLE APPLICATION");
     }
   };
 
@@ -80,24 +84,33 @@ struct x11_base
   {
     std::cout << "fd_readable" << std::endl;
     XEvent xev;
-    // which window ??
     for (auto&& w : windows)
     {
-      bool check = XCheckWindowEvent(display, w, KeyPressMask | ExposureMask | ButtonPressMask, &xev);
-      if (check)
+      bool check;
+      bool last_was_keypress = false;
+      bool last_was_buttonpress = false;
+      while ((check = XCheckWindowEvent (display, w, KeyPressMask | KeyReleaseMask | ExposureMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask, &xev)))
       {
+        std::cout << " Event Type " << (int)xev.type << std::endl;
         std::cout << "is Expose ? " << (xev.type == Expose) << " is KeyPress? " << (xev.type == KeyPress)
-                  << " is button press? " << (xev.type == ButtonPress) << std::endl;
+                  << " is KeyRelease? " << (xev.type == KeyRelease)
+                  << " is button press? " << (xev.type == ButtonPress)
+                  << " is button release? " << (xev.type == ButtonRelease) << std::endl;
         if (xev.type == Expose)
           exposure_signal();
-        else if (xev.type == KeyPress)
-          {}
-        else if (xev.type == ButtonPress)
-          {}
-      }
-      else
-      {
-        std::cout << "no event" << std::endl;
+        else if ((xev.type == KeyPress || xev.type == KeyRelease) && !(xev.type == KeyPress && last_was_keypress))
+        {
+          last_was_keypress = xev.type == KeyPress;
+          key_signal (xev.xkey);
+        }
+        else if ((xev.type == ButtonPress || xev.type == ButtonRelease) && !(xev.type == ButtonPress && last_was_buttonpress))
+        {
+          last_was_buttonpress = xev.type == ButtonPress;
+        }
+        else if (xev.type == MotionNotify)
+        {
+          motion_signal (xev.xmotion);
+        }
       }
     }
   }
@@ -112,6 +125,9 @@ struct x11_base
       int fd = XConnectionNumber(display);
       display_fd = loop.create_fd (fd, static_cast<int>(Loop::readable)
                                    , std::bind(&self_type::fd_readable, this));
+      Bool r = True;
+      XkbSetDetectableAutoRepeat (display, r, &r);
+      assert (r == True);
     }
     else
     {
@@ -123,7 +139,7 @@ struct x11_base
   {
     XSetWindowAttributes swa = {};
     swa.colormap = cmap;
-    swa.event_mask = ExposureMask | KeyPressMask | ButtonPressMask;
+    swa.event_mask = ExposureMask | KeyPressMask | ButtonPressMask | KeyReleaseMask | ButtonReleaseMask | PointerMotionMask;
     std::cout << "creating window with w: " << width << " h: " << height << std::endl;
     Window w = XCreateWindow(display, root, 0, 0, width, height, 0
                              , /*vi->depth*/24, InputOutput

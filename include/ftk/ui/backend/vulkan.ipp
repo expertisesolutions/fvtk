@@ -19,30 +19,15 @@
 
 namespace ftk { namespace ui { namespace backend {
 
-xlib_surface::window xlib_surface::create_window(int width, int height) const
+template <typename Loop>
+typename xlib_surface<Loop>::window xlib_surface<Loop>::create_window(int width, int height) const
 {
     using fastdraw::output::vulkan::from_result;
     using fastdraw::output::vulkan::vulkan_error_code;
 
     window w;
-    w.x11_display = XOpenDisplay(NULL);
- 
-    if(w.x11_display == NULL) {
-      printf("\n\tcannot connect to X server\n\n");
-      throw -1;
-    }
-    Window root = DefaultRootWindow(w.x11_display);
-    Colormap cmap = DefaultColormap(w.x11_display, 0);
+    static_cast<base::window&>(w) = base::create_window (width, height);
 
-    XSetWindowAttributes swa;
-    swa.colormap = cmap;
-    swa.event_mask = ExposureMask | KeyPressMask;
- 
-    w.x11_window = XCreateWindow(w.x11_display, root, 0, 0, width, height, 0, /*vi->depth*/24, InputOutput, /*vi->visual*/0, CWColormap | CWEventMask, &swa);
-
-    XMapWindow(w.x11_display, w.x11_window);
-    XStoreName(w.x11_display, w.x11_window, "VERY SIMPLE APPLICATION");
-    
     {
       uint32_t count;
       vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr); //get number of extensions
@@ -116,46 +101,6 @@ xlib_surface::window xlib_surface::create_window(int width, int height) const
         }
       }
       
-      // VkDisplayPropertiesKHR* display_properties = nullptr;
-      // {
-      //   uint32_t count = 0;
-      //   r = from_result(vkGetPhysicalDeviceDisplayPropertiesKHR (w.physicalDevice, &count, nullptr));
-      //   if (r != vulkan_error_code::success)
-      //     throw std::system_error (make_error_code (r));
-
-      //   std::cout << "count " << count << std::endl;
-
-      //   display_properties = new VkDisplayPropertiesKHR[count];
-
-      //   r = from_result(vkGetPhysicalDeviceDisplayPropertiesKHR (w.physicalDevice, &count, display_properties));
-      //   if (r != vulkan_error_code::success)
-      //     throw std::system_error (make_error_code (r));
-
-      //   for (int i = 0; i != count; ++i )
-      //   {
-      //     std::cout << "display name " << display_properties[i].displayName << std::endl;
-      //   }
-      //   std::cout << "transform supported " << (int)display_properties[0].supportedTransforms << std::endl;
-        
-      //   assert (count != 0);
-      // }
-
-      // VkDisplayModePropertiesKHR* display_mode_properties = nullptr;
-      // {
-      //   uint32_t count = 0;        
-      //   r = from_result(vkGetDisplayModePropertiesKHR (w.physicalDevice, display_properties[0].display, &count, nullptr));
-      //   if (r != vulkan_error_code::success)
-      //     throw std::system_error (make_error_code (r));
-
-      //   display_mode_properties = new VkDisplayModePropertiesKHR[count];
-      //   std::cout << "display modes " << count << std::endl;
-
-      //   r = from_result(vkGetDisplayModePropertiesKHR (w.physicalDevice, display_properties[0].display, &count, display_mode_properties));
-      //   if (r != vulkan_error_code::success)
-      //     throw std::system_error (make_error_code (r));
-
-      //   assert(count != 0);
-
       VkXlibSurfaceCreateInfoKHR info = {};
       std::memset(&info, 0, sizeof(info));
       info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
@@ -263,7 +208,7 @@ khr_display::window khr_display::create_window(int width, int height) const
         if (r != vulkan_error_code::success)
           throw std::system_error (make_error_code (r));
 
-        for (int i = 0; i != count; ++i )
+        for (unsigned int i = 0; i != count; ++i )
         {
           std::cout << "display name " << display_properties[i].displayName << std::endl;
         }
@@ -326,17 +271,6 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
 
     std::cout << "Creating vulkan surface " << std::endl;
     {
-      // abort();
-      // VkXlibSurfaceCreateInfoKHR info = {};
-      // std::memset(&info, 0, sizeof(info));
-      // info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-      // info.dpy = wb.display;
-      // info.window = wb.win;
-
-      // r = from_result (vkCreateXlibSurfaceKHR(instance, &info, NULL, &surface));
-      // if (r != vulkan_error_code::success)
-      //   throw std::system_error (make_error_code (r));
-
       uint32_t queueFamilyCount = 0;
       vkGetPhysicalDeviceQueueFamilyProperties(wb.physicalDevice, &queueFamilyCount, nullptr);
 
@@ -372,7 +306,7 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
           , NULL
           , 0
           , *graphicsFamilyIndex
-          , 2
+          , 2 + additional_graphic_queues
           , &queuePriority
         },
         VkDeviceQueueCreateInfo {
@@ -430,48 +364,6 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
       assert(formatCount != 0);
       uint32_t imageCount = 2;
 
-      // {
-      //   // VkPhysicalDeviceImageDrmFormatModifierInfoEXT imageMod {};
-      //   // VkPhysicalDeviceImageFormatInfo2 info2 {};
-      //   // info2.sType = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
-      //   // //info2.
-      //   // info2.format = fotmats[0].format;
-      //   // info2.type = VK_IMAGE_TYPE_2D;
-      //   // info2.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
-      //   // info2.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-      //   // info2.flags = 0;
-      //   // VkImageFormatProperties2 prop;
-      //   // r = from_result(vkGetPhysicalDeviceImageFormatProperties2 (physicalDevice, &info2, &prop));
-      //   // std::cout << " image format error " << static_cast<int>(r) << std::endl;
-        
-      //   VkDrmFormatModifierPropertiesListEXT drmModifiers {};
-      //   drmModifiers.sType = VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT;
-      //   //drmModifiers.pNext = &drmModifiers;
-        
-      //   VkFormatProperties2 formatProperties {};
-      //   formatProperties.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2;
-      //   formatProperties.pNext = &drmModifiers;
-        
-      //   std::cout << "Going to get format properties" << std::endl;
-      //   vkGetPhysicalDeviceFormatProperties2 (physicalDevice, /*formats[0].format*/VK_FORMAT_B8G8R8A8_UNORM, &formatProperties);
-      //   // if (r != vulkan_error_code::success)
-      //   //   throw std::system_error (make_error_code (r));
-
-      //   std::cout << "There are " << drmModifiers.drmFormatModifierCount << " modifier formats" << std::endl;
-
-      //   std::vector<VkDrmFormatModifierPropertiesEXT> modifiers {drmModifiers.drmFormatModifierCount};
-      //   if (!modifiers.empty())
-      //   {
-      //     drmModifiers.pDrmFormatModifierProperties = &modifiers[0];
-
-      //     vkGetPhysicalDeviceFormatProperties2 (physicalDevice, /*formats[0].format*/VK_FORMAT_B8G8R8A8_UNORM, &formatProperties);
-      //     // if (r != vulkan_error_code::success)
-      //     //   throw std::system_error (make_error_code (r));
-
-          
-      //   }        
-      // }
-      
       VkSwapchainCreateInfoKHR swapInfo = {};
       swapInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
       swapInfo.surface = wb.surface;
@@ -608,36 +500,6 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
         throw std::runtime_error("failed to create semaphores!");
     }
 
-      // {
-      //   VkDrmFormatModifierPropertiesListEXT drmModifiers {};
-      //   drmModifiers.sType = VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT;
-      //   drmModifiers.pNext = NULL;
-        
-      //   VkFormatProperties2 formatProperties {};
-      //   formatProperties.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2;
-      //   formatProperties.pNext = &drmModifiers;
-        
-      //   std::cout << "Going to get format properties" << std::endl;
-      //   vkGetPhysicalDeviceFormatProperties2 (physicalDevice, swapChainImageFormat, &formatProperties);
-      //   // if (r != vulkan_error_code::success)
-      //   //   throw std::system_error (make_error_code (r));
-
-      //   std::cout << "There are " << drmModifiers.drmFormatModifierCount << " modifier formats" << std::endl;
-
-      //   std::vector<VkDrmFormatModifierPropertiesEXT> modifiers {drmModifiers.drmFormatModifierCount};
-      //   assert (!modifiers.empty());
-      //   if (!modifiers.empty())
-      //   {
-      //     drmModifiers.pDrmFormatModifierProperties = &modifiers[0];
-
-      //     vkGetPhysicalDeviceFormatProperties2 (physicalDevice, swapChainImageFormat, &formatProperties);
-      //     // if (r != vulkan_error_code::success)
-      //     //   throw std::system_error (make_error_code (r));
-
-          
-      //   }        
-      // }
-    
     window w {{wb}, {}, {{{}, graphicsQueue, presentQueue, {}, {}
           , swapChainImageFormat, swapChainExtent, device, wb.physicalDevice
               , renderPass, commandPool, &w.shader_loader}}, *graphicsFamilyIndex

@@ -29,10 +29,12 @@ namespace ftk { namespace ui { namespace backend {
 template <typename Loop, typename WindowingBase>
 struct vulkan : WindowingBase
 {
-  vulkan (Loop loop)
-    : WindowingBase(loop)
+  vulkan (Loop loop, int additional_graphic_queues)
+    : WindowingBase(loop), additional_graphic_queues(additional_graphic_queues)
   {
   }
+
+  int additional_graphic_queues;
   
   using window_base = typename WindowingBase::window;
   
