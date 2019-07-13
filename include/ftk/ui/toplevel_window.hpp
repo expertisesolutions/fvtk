@@ -30,6 +30,7 @@ struct toplevel_window
     : window (backend.create_window(1280, 1000))
   {
     //backend_->exposure_signal.connect (std::bind(&toplevel_window<Backend>::exposure, this));
+    
   }
 
   toplevel_window (toplevel_window&& other) = delete; // for now
@@ -47,8 +48,11 @@ struct toplevel_window
   //   shm_buffers.push_back ({buffer, x, y, width, height, stride});
   // }
 
+  //std::mutex render_mutex;
+  
   // should be a fastdraw something
-  std::vector<toplevel_window_image> images;;
+  std::vector<toplevel_window_image> images;
+  std::vector<VkCommandBuffer> command_buffers;
   
   // Backend* backend_;
   mutable typename Backend::window window;

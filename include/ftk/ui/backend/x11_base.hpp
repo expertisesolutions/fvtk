@@ -82,7 +82,7 @@ struct x11_base
 
   void fd_readable () const
   {
-    std::cout << "fd_readable" << std::endl;
+    // std::cout << "fd_readable" << std::endl;
     XEvent xev;
     for (auto&& w : windows)
     {
@@ -91,11 +91,11 @@ struct x11_base
       bool last_was_buttonpress = false;
       while ((check = XCheckWindowEvent (display, w, KeyPressMask | KeyReleaseMask | ExposureMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask, &xev)))
       {
-        std::cout << " Event Type " << (int)xev.type << std::endl;
-        std::cout << "is Expose ? " << (xev.type == Expose) << " is KeyPress? " << (xev.type == KeyPress)
-                  << " is KeyRelease? " << (xev.type == KeyRelease)
-                  << " is button press? " << (xev.type == ButtonPress)
-                  << " is button release? " << (xev.type == ButtonRelease) << std::endl;
+        // std::cout << " Event Type " << (int)xev.type << std::endl;
+        // std::cout << "is Expose ? " << (xev.type == Expose) << " is KeyPress? " << (xev.type == KeyPress)
+        //           << " is KeyRelease? " << (xev.type == KeyRelease)
+        //           << " is button press? " << (xev.type == ButtonPress)
+        //           << " is button release? " << (xev.type == ButtonRelease) << std::endl;
         if (xev.type == Expose)
           exposure_signal();
         else if ((xev.type == KeyPress || xev.type == KeyRelease) && !(xev.type == KeyPress && last_was_keypress))
@@ -109,6 +109,7 @@ struct x11_base
         }
         else if (xev.type == MotionNotify)
         {
+          ///std::cout << "Is motion? " << std::endl;
           motion_signal (xev.xmotion);
         }
       }

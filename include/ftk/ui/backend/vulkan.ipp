@@ -283,6 +283,7 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
       for (const auto& queueFamily : queueFamilies) {
         if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
           graphicsFamilyIndex = i;
+          std::cout << "graphic family has " << queueFamily.queueCount << std::endl;
         }
 
         {
@@ -298,7 +299,10 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
         i++;
       }
 
-      float queuePriority = 1.0f;
+      std::unique_ptr<float[]> queue_priority { new float[3 + additional_graphic_queues]};
+      for (float* first = &queue_priority[0], *last = &queue_priority[0] + 3 + additional_graphic_queues
+             ; first != last; ++ first)
+        *first = 1.0f;
       std::array<VkDeviceQueueCreateInfo, 2> queueInfo
       ({
         VkDeviceQueueCreateInfo {
@@ -307,7 +311,7 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
           , 0
           , *graphicsFamilyIndex
           , 2 + additional_graphic_queues
-          , &queuePriority
+          , &queue_priority[0]
         },
         VkDeviceQueueCreateInfo {
           VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO
@@ -315,7 +319,7 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
           , 0
           , *presentationFamilyIndex
           , 1
-          , &queuePriority
+          , &queue_priority[0]
         }
       });
       //assert(*graphicsFamilyIndex == *presentationFamilyIndex);
@@ -427,7 +431,7 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
       VkAttachmentDescription colorAttachment = {};
       colorAttachment.format = swapChainImageFormat;
       colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-      colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+      colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
       colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;

@@ -110,6 +110,9 @@ std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (s
 
        auto size = image.height() * image.stride();
 
+       std::cout << "png image " << image.width() << "x" << image.height() << " image  stride " << image.stride()
+                 << " format " << (int)image.format() << std::endl;
+
        auto staging_pair = fastdraw::output::vulkan::create_buffer
          (device, size, physical_device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
@@ -117,9 +120,11 @@ std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (s
        auto r = from_result(vkMapMemory(device, staging_pair.second, 0, size, 0, &data));
        if (r != vulkan_error_code::success)
          throw std::system_error (make_error_code(r));
-       
-       image.write_to (static_cast<char*>(data), size);
 
+       image.write_to (static_cast<char*>(data), size);
+       // for (std::size_t i = 3; i < size; i += 4)
+       //   static_cast<char*>(data)[i] = 255;
+       
        vkUnmapMemory(device, staging_pair.second);
 
        auto format = VK_FORMAT_B8G8R8A8_UNORM; //VK_FORMAT_R8G8B8A8_UNORM; RGBA vs ARGB
@@ -162,6 +167,7 @@ std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (s
        }
 
        vkBindImageMemory(device, vulkan_image, textureImageMemory, 0);
+       std::cout << __FILE__ << ":" << __LINE__ << std::endl;
 
        VkImageView vulkan_image_view;
        VkImageViewCreateInfo viewInfo = {};
@@ -179,6 +185,8 @@ std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (s
          throw std::runtime_error("failed to create texture image view!");
        }
 
+       std::cout << __FILE__ << ":" << __LINE__ << std::endl;
+
        VkCommandBufferBeginInfo beginInfo = {};
        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -187,6 +195,7 @@ std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (s
        if (r != vulkan_error_code::success)
          throw std::system_error (make_error_code(r));
 
+       std::cout << __FILE__ << ":" << __LINE__ << std::endl;
        VkImageMemoryBarrier barrier = {};
        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
        barrier.oldLayout = /*oldLayout*/ VK_IMAGE_LAYOUT_UNDEFINED;
@@ -208,6 +217,7 @@ std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (s
        barrier.srcAccessMask = 0; // TODO
        barrier.dstAccessMask = 0; // TODO
 
+       std::cout << __FILE__ << ":" << __LINE__ << std::endl;
        vkCmdPipelineBarrier
          (
           command_buffer,
@@ -217,6 +227,7 @@ std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (s
           0, nullptr,
           1, &barrier
          );
+       std::cout << __FILE__ << ":" << __LINE__ << std::endl;
        
        VkBufferImageCopy region = {};
        region.bufferOffset = 0;
@@ -234,6 +245,7 @@ std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (s
                              image.height(),
                              1
                             };
+       std::cout << __FILE__ << ":" << __LINE__ << std::endl;
   
        vkCmdCopyBufferToImage
          (
@@ -250,6 +262,7 @@ std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (s
 
        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+       std::cout << __FILE__ << ":" << __LINE__ << std::endl;
 
        vkCmdPipelineBarrier
          (
@@ -261,7 +274,9 @@ std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (s
           1, &barrier
          );
 
+       std::cout << __FILE__ << ":" << __LINE__ << std::endl;
        vkEndCommandBuffer(command_buffer);
+       std::cout << __FILE__ << ":" << __LINE__ << std::endl;
        
        VkSubmitInfo submitInfo = {};
        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -271,17 +286,22 @@ std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (s
        {
          vulkan_thread_pool::queue_lockable::lock lock (&queue_lockable);
 
+       std::cout << __FILE__ << ":" << __LINE__ << std::endl;
          r = from_result(vkQueueSubmit(lock.get_queue(), 1, &submitInfo, VK_NULL_HANDLE));
          if (r != vulkan_error_code::success)
            throw std::system_error (make_error_code(r));
+       std::cout << __FILE__ << ":" << __LINE__ << std::endl;
                  
-         vkQueueWaitIdle(lock.get_queue());
+         //vkQueueWaitIdle(lock.get_queue());
 
          // if (submit_error)
          //   throw -1;
        }
-       vkDestroyBuffer(device, staging_pair.first, nullptr);
-       vkFreeMemory(device, staging_pair.second, nullptr);
+       std::cout << __FILE__ << ":" << __LINE__ << std::endl;
+       //vkDestroyBuffer(device, staging_pair.first, nullptr);
+       std::cout << __FILE__ << ":" << __LINE__ << std::endl;
+       //vkFreeMemory(device, staging_pair.second, nullptr);
+       std::cout << __FILE__ << ":" << __LINE__ << std::endl;
 
        return {vulkan_image, vulkan_image_view};
      });

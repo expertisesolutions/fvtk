@@ -36,7 +36,7 @@ struct vulkan_thread_pool
   std::unique_ptr<std::atomic_flag[]> threads_in_use;
   std::atomic_uint32_t threads_in_use_total;
   int command_buffers_per_queue;
-  int thread_pool_count;
+  unsigned int thread_pool_count;
 
   vulkan_thread_pool (VkDevice device, int family_index
                       , int queue_index_first, int queue_index_last
