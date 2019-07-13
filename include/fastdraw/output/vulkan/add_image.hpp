@@ -909,28 +909,28 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     if (r != vulkan_error_code::success)
       throw std::system_error(make_error_code(r));
 
-  CHRONO_COMPARE()
-  std::cout << __FILE__ ":" << __LINE__ << std::endl;
+  // CHRONO_COMPARE()
+  // std::cout << __FILE__ ":" << __LINE__ << std::endl;
 
-    VkDescriptorPool descriptorPool;
-    /*std::array<*/VkDescriptorPoolSize/*, 2>*/ poolSizes = {};
-    // poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    // poolSizes[0].descriptorCount = /*static_cast<uint32_t>(swapChainImages.size())*/1;
-    poolSizes/*[1]*/.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSizes/*[1]*/.descriptorCount = /*static_cast<uint32_t>(swapChainImages.size())*/1;
+  //   VkDescriptorPool descriptorPool;
+  //   /*std::array<*/VkDescriptorPoolSize/*, 2>*/ poolSizes = {};
+  //   // poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  //   // poolSizes[0].descriptorCount = /*static_cast<uint32_t>(swapChainImages.size())*/1;
+  //   poolSizes/*[1]*/.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  //   poolSizes/*[1]*/.descriptorCount = /*static_cast<uint32_t>(swapChainImages.size())*/1;
 
-    VkDescriptorPoolCreateInfo poolInfo = {};
-    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount = 1/*static_cast<uint32_t>(poolSizes.size())*/;
-    poolInfo.pPoolSizes = &poolSizes/*.data()*/;
-    poolInfo.maxSets = 1/*static_cast<uint32_t>(swapChainImages.size())*/;
+  //   VkDescriptorPoolCreateInfo poolInfo = {};
+  //   poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  //   poolInfo.poolSizeCount = 1/*static_cast<uint32_t>(poolSizes.size())*/;
+  //   poolInfo.pPoolSizes = &poolSizes/*.data()*/;
+  //   poolInfo.maxSets = 1/*static_cast<uint32_t>(swapChainImages.size())*/;
 
-  CHRONO_COMPARE()
-    r = from_result(vkCreateDescriptorPool(output.device, &poolInfo, nullptr, &descriptorPool));
-    if (r != vulkan_error_code::success)
-      throw std::system_error(make_error_code(r));
+  // CHRONO_COMPARE()
+  //   r = from_result(vkCreateDescriptorPool(output.device, &poolInfo, nullptr, &descriptorPool));
+  //   if (r != vulkan_error_code::success)
+  //     throw std::system_error(make_error_code(r));
 
-  CHRONO_COMPARE()
+  // CHRONO_COMPARE()
     // for (size_t i = 0; i < swapChainImages.size(); i++) {
     // VkDescriptorBufferInfo bufferInfo = {};
     // bufferInfo.buffer = uniformBuffers[i];
@@ -992,19 +992,19 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
 
      // std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
 
-     VkDescriptorSet descriptorSet;
+  //    VkDescriptorSet descriptorSet;
 
-     VkDescriptorSetAllocateInfo allocInfo = {};
-     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-     allocInfo.descriptorPool = descriptorPool;
-     allocInfo.descriptorSetCount = 1;
-     allocInfo.pSetLayouts = /*layouts.data()*/&descriptorSetLayout;
+  //    VkDescriptorSetAllocateInfo allocInfo = {};
+  //    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  //    allocInfo.descriptorPool = descriptorPool;
+  //    allocInfo.descriptorSetCount = 1;
+  //    allocInfo.pSetLayouts = /*layouts.data()*/&descriptorSetLayout;
 
-  CHRONO_COMPARE()
-      r = from_result(vkAllocateDescriptorSets(output.device, &allocInfo, &descriptorSet));
-      if (r != vulkan_error_code::success)
-        throw std::system_error(make_error_code(r));
-  CHRONO_COMPARE()
+  // CHRONO_COMPARE()
+  //     r = from_result(vkAllocateDescriptorSets(output.device, &allocInfo, &descriptorSet));
+  //     if (r != vulkan_error_code::success)
+  //       throw std::system_error(make_error_code(r));
+  // CHRONO_COMPARE()
 
      // VkDescriptorImageInfo imageInfo = {};
      // imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1071,10 +1071,15 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     
     VkPipelineLayout pipelineLayout;
 
+    std::size_t desc_layout_size = 1;
+    std::unique_ptr<VkDescriptorSetLayout[]> descriptor_set_layouts{new VkDescriptorSetLayout[desc_layout_size]};
+    for(auto first = &descriptor_set_layouts[0], last = first + desc_layout_size; first != last; ++first)
+      *first = descriptorSetLayout;          
+
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 1; // Optional
-    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // Optional
+    pipelineLayoutInfo.setLayoutCount = desc_layout_size; // Optional
+    pipelineLayoutInfo.pSetLayouts = &descriptor_set_layouts[0]; // Optional
   CHRONO_COMPARE()
     r = from_result(vkCreatePipelineLayout(output.device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
     if (r != vulkan_error_code::success)
@@ -1221,7 +1226,7 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     // return {graphicsPipeline, pipelineLayout, output.renderpass, 6, 1, 0, 0, /*push_constants*/{}, {{0, vertexBuffer}, {0, vertexBuffer}}
     //         , descriptorSet, descriptorSetLayout};
     return {graphicsPipeline, pipelineLayout, output.renderpass, 6, 1, 0, 0, /*push_constants*/{}, {}
-            , descriptorSet, descriptorSetLayout};
+            , {}/*descriptorSet*/, descriptorSetLayout};
   }
   
   // return {};

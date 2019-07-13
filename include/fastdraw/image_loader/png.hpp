@@ -119,7 +119,7 @@ struct png
 
   fastdraw::buffer_format format () const
   {
-    auto bit_depth = png_get_bit_depth (png_ptr, info_ptr);
+    //auto bit_depth = static_cast<unsigned int>(png_get_bit_depth (png_ptr, info_ptr));
     auto color_type = png_get_color_type (png_ptr, info_ptr);
     switch (color_type)
     {
@@ -143,10 +143,13 @@ struct png
     for (int32_t i = 0; i != height(); ++i)
     {
       if (png_ptr)
+      {
         row_pointers[i] = static_cast<png_byte*>(static_cast<void*>(buffer)) + i * stride();
+      }
       else
         row_pointers[i] = (i ? row_pointers[i - 1] : static_cast<png_byte*>(static_cast<void*>(buffer)));
     }
+    ::png_read_image (png_ptr, row_pointers);
   }
 };
 
