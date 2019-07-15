@@ -22,7 +22,7 @@ namespace fastdraw { namespace output { namespace vulkan {
 template <typename WindowingBase>
 struct vulkan_output_info : WindowingBase
 {
-  VkQueue graphics_queue, present_queue;
+  // VkQueue graphics_queue, present_queue;
   VkShaderModule vertShaderModule, fragShaderModule;
   VkFormat swapChainImageFormat;
   VkExtent2D swapChainExtent;
