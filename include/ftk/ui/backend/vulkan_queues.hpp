@@ -115,12 +115,26 @@ std::pair<std::vector<VkDeviceQueueCreateInfo>
 
 struct vulkan_queues
 {
-  std::vector<queue> queues;
-  //std::vector<queue> presentation_queues;
+  struct family
+  {
+    unsigned int index;
 
-  std::unique_ptr<std::atomic_flag[]> graphics_in_use;
-  std::unique_ptr<std::atomic_flag[]> presentations_in_use;
-
+    std::vector<VkQueue> queues;
+    std::unique_ptr<std::atomic_flag[]> in_use;
+  };
+  std::vector<family> global_graphic_families, global_presentation_families
+    , global_shared_families;
+  struct family_ref
+  {
+    unsigned int index;
+  };
+  struct swapchain
+  {
+    std::vector<std::variant<family, family_ref>>  graphic_families
+      , presentation_families;
+  };
+  std::vector<swapchain> swapchains;
+  
   vulkan_queues (vulkan_queues const&) = delete;
   vulkan_queues (vulkan_queues&&) = default;
 
@@ -128,75 +142,81 @@ struct vulkan_queues
   vulkan_queues& operator= (vulkan_queues&&) = default;
   
   vulkan_queues () {}
+
+  void push_back_swapchain (swapchain s)
+  {
+    swapchains.push_back(std::move(s));
+  }
   
-  vulkan_queues (std::vector<std::vector<queue>> swapchains_queues
-                 , std::vector<queue> graphic_queues
+  vulkan_queues (std::vector<queue> graphic_queues
                  , std::vector<queue> presentation_queues
                  , std::vector<queue> shared_queues)
-    : graphic_queues (graphic_queues), presentation_queues (presentation_queues)
   {
-    graphic_queues.insert(graphic_queues.end(), shared_queues.begin(), shared_queues.end());
-    presentation_queues.insert(presentation_queues.end(), shared_queues.begin(), shared_queues.end());
 
-    graphics_in_use.reset (new std::atomic_flag[graphic_queues.size()]);
-    presentations_in_use.reset (new std::atomic_flag[presentation_queues.size()]);
+    auto fill
+      = [] (std::vector<queue> queues)
+        {
+          std::map<unsigned int, unsigned int> mapping;
+          std::vector<family> families;
+          for (auto&& q : queues)
+          {
+            auto it = mapping.find (q.family);
+            if (it == mapping.end ())
+            {
+              auto i = families.size();
+              families.push_back ({q.family, {q.queue_}});
+              auto pair = mapping.insert ({q.family, i});
+            }
+            else
+              families[it->second].queues.push_back(q.queue_);
+          }
+          for (auto && f : families)
+          {
+            f.in_use.reset(new std::atomic_flag[f.queues.size()]);
+            for (auto p = &f.in_use[0], last = p + f.queues.size()
+                   ;p != last; ++p)
+              p->clear();
+          }
+          return families;
+        };
 
-    for (auto g = &graphics_in_use[0], last = g + graphic_queues.size(); g != last; ++g)
-      g->clear();
-    for (auto p = &presentations_in_use[0], last = p + presentation_queues.size(); p != last; ++p)
-      p->clear();
+    global_graphic_families = fill (graphic_queues);
+    global_presentation_families = fill (presentation_queues);
+    global_shared_families = fill (shared_queues);
   }
 
   struct lock_graphic_queue
   {
     vulkan_queues* queues;
-    unsigned int i;
+    unsigned int i, j;
     
     lock_graphic_queue(vulkan_queues& queues)
       : queues (&queues), i (0)
     {
-      for (; i != queues.graphic_queues.size(); ++i)
+      for (; i != queues.global_graphic_families.size(); ++i)
       {
-        if (queues.graphics_in_use[i].test_and_set () == false /* old value */)
-          break;
+        for (j = 0; j != queues.global_graphic_families[i].queues.size(); ++j)
+          if (queues.global_graphic_families[i].in_use[j].test_and_set () == false /* old value */)
+            break;
       }
 
-      if (i == queues.graphic_queues.size())
+      if (i == queues.global_graphic_families.size())
         throw -1;
     }
 
-    queue get_queue () const { return queues->graphic_queues[i]; }
+    queue get_queue () const
+    {
+      return {queues->global_graphic_families[i].queues[j], queues->global_graphic_families[i].index};
+      }
 
     ~lock_graphic_queue()
     {
-      queues->graphics_in_use[i].clear();
+      //queues->graphic[i].clear();
     }
   };
 
   struct lock_presentation_queue
   {
-    vulkan_queues* queues;
-    unsigned int i;
-    
-    lock_presentation_queue(vulkan_queues& queues)
-      : queues (&queues), i (0)
-    {
-      for (; i != queues.presentation_queues.size(); ++i)
-      {
-        if (queues.presentations_in_use[i].test_and_set () == false /* old value */)
-          break;
-      }
-
-      if (i == queues.presentation_queues.size())
-        throw -1;
-    }
-
-    queue get_queue () const { return queues->presentation_queues[i]; }
-
-    ~lock_presentation_queue()
-    {
-      queues->presentations_in_use[i].clear();
-    }
   };
   
 };
