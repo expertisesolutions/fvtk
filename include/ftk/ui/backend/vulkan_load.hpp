@@ -570,25 +570,25 @@ inline vulkan_buffer_token<U> load_buffer
                submitInfo.commandBufferCount = 1;
                submitInfo.pCommandBuffers = &commandBuffer;
 
-               {
-                 std::unique_lock<std::mutex> l(*window->window.copy_buffer_queue_mutex);
+               // {
+               //   std::unique_lock<std::mutex> l(window->window.copy_buffer_queue_mutex);
                
-                 CHRONO_COMPARE()
-                 r = from_result(vkQueueSubmit(window->window.copy_buffer_queue, 1, &submitInfo, VK_NULL_HANDLE));
+               //   CHRONO_COMPARE()
+               //   r = from_result(vkQueueSubmit(window->window.copy_buffer_queue, 1, &submitInfo, VK_NULL_HANDLE));
 
-                 if (r != vulkan_error_code::success)
-                 {
-                   handler (make_error_code(r), token);
-                   return;
-                 }
+               //   if (r != vulkan_error_code::success)
+               //   {
+               //     handler (make_error_code(r), token);
+               //     return;
+               //   }
                  
-                 CHRONO_COMPARE()
-                 vkQueueWaitIdle(window->window.copy_buffer_queue);
-                 CHRONO_COMPARE()
+               //   CHRONO_COMPARE()
+               //   vkQueueWaitIdle(window->window.copy_buffer_queue);
+               //   CHRONO_COMPARE()
 
-                 // if (submit_error)
-                 //   throw -1;
-               }
+               //   // if (submit_error)
+               //   //   throw -1;
+               // }
                CHRONO_COMPARE()
                vkFreeCommandBuffers(window->window.voutput.device, command_pool, 1, &commandBuffer);
                vkDestroyBuffer(window->window.voutput.device, staging_pair.first, nullptr);

@@ -14,12 +14,19 @@
 
 #include <iostream>
 
+#include <mutex>
+
 namespace ftk { namespace ui {
 
 struct toplevel_window_image
 {
   VkImageView image_view;
   std::int32_t x, y, width, height;
+};
+
+struct toplevel_window_comand_buffer_cache
+{
+  VkCommandBuffer command_buffer;
 };
     
 template <typename Backend>
@@ -52,10 +59,12 @@ struct toplevel_window
   
   // should be a fastdraw something
   std::vector<toplevel_window_image> images;
-  std::vector<VkCommandBuffer> command_buffers;
+  std::vector<toplevel_window_comand_buffer_cache> command_buffers;
   
   // Backend* backend_;
   mutable typename Backend::window window;
+
+  std::mutex image_mutex; // for images vector and command_buffers cache
 };
     
 } }

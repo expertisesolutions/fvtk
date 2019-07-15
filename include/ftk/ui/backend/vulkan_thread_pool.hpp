@@ -37,14 +37,15 @@ struct vulkan_thread_pool
   std::atomic_uint32_t threads_in_use_total;
   int command_buffers_per_queue;
   unsigned int thread_pool_count;
+  //unsigned int max_threads;
 
   vulkan_thread_pool (VkDevice device, int family_index
                       , int queue_index_first, int queue_index_last
-                      , unsigned int command_buffers_per_queue = 3
-                      , unsigned int threads)
+                      , unsigned int threads
+                      , unsigned int command_buffers_per_queue = 3)
     : device(device), family_index (family_index)
     , threads_in_use_total (0u), command_buffers_per_queue(command_buffers_per_queue)
-    , max_threads (threads)
+    , thread_pool_count (threads)
   {
     using fastdraw::output::vulkan::from_result;
     using fastdraw::output::vulkan::vulkan_error_code;
@@ -59,7 +60,7 @@ struct vulkan_thread_pool
     }
 
     const int queue_count = queue_index_last - queue_index_first;
-    thread_pool_count = (queue_count) * command_buffers_per_queue;
+    //thread_pool_count = std::min((queue_count) * command_buffers_per_queue, max_threads);
 
     if (thread_pool_count == 0)
       throw -1;
@@ -72,7 +73,6 @@ struct vulkan_thread_pool
            ; first != last; ++first)
       first->clear();
 
-
     VkCommandBufferAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -83,10 +83,6 @@ struct vulkan_thread_pool
     if (r != vulkan_error_code::success)
       throw -1;
 
-    for (int i = queue_index_first; i != queue_index_last; ++i)
-    {
-      vkGetDeviceQueue(device, family_index, i, &thread_groups_context[i - queue_index_first].queue);
-    }
   }
 
   struct queue_lockable

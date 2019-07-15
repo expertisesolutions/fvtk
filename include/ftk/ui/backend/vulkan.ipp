@@ -14,10 +14,64 @@
 #include <vulkan/vulkan_xlib.h>
 #include <vulkan/vulkan_core.h>
 
+#include <ftk/ui/backend/vulkan_queues.hpp>
 #include <ftk/ui/backend/khr_display.hpp>
 #include <ftk/ui/backend/xlib_surface.hpp>
 
 namespace ftk { namespace ui { namespace backend {
+
+std::vector<unsigned int> get_graphics_family (VkPhysicalDevice physical_device)
+{
+  uint32_t queue_family_count = 0;
+  vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
+
+  std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+  vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families.data());
+
+  std::vector<unsigned int> graphic_families;
+    
+  unsigned int i = 0;
+  for (const auto& queue_family : queue_families)
+  {
+    if (queue_family.queueCount > 0 && queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+      graphic_families.push_back(i);
+    ++i;
+  }
+  return graphic_families;
+}
+
+std::vector<unsigned int> get_presentation_family (VkPhysicalDevice physical_device, VkSurfaceKHR surface)
+{
+  uint32_t queue_family_count = 0;
+  vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
+
+  std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+  vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families.data());
+
+  std::vector<unsigned int> highest_priority_presentation_families;
+  std::vector<unsigned int> lower_priority_presentation_families;
+  unsigned int i = 0;
+  for (const auto& queue_family : queue_families)
+  {
+    VkBool32 presentSupport = false;
+    vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, i, surface, &presentSupport);
+    if (queue_family.queueCount > 0 && presentSupport)
+    {
+      if (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) // let give priority to non graphic family
+        lower_priority_presentation_families.push_back(i);
+      else
+        highest_priority_presentation_families.push_back(i);
+    }
+    ++i;
+  }
+
+  std::vector<unsigned int> presentation_families (highest_priority_presentation_families.begin()
+                                                   , highest_priority_presentation_families.end());
+  std::copy (lower_priority_presentation_families.begin()
+             , lower_priority_presentation_families.end()
+             , std::back_inserter(presentation_families));
+  return presentation_families;
+}
 
 template <typename Loop>
 typename xlib_surface<Loop>::window xlib_surface<Loop>::create_window(int width, int height) const
@@ -86,6 +140,11 @@ typename xlib_surface<Loop>::window xlib_surface<Loop>::create_window(int width,
 
       w.physicalDevice = devices[0];
 
+      VkPhysicalDeviceProperties physical_properties;
+      vkGetPhysicalDeviceProperties (w.physicalDevice, &physical_properties);
+
+      std::cout << "Device name "  << physical_properties.deviceName << std::endl;
+
       {
         std::cout << "get device extensions" << std::endl;
         std::uint32_t count = 0;
@@ -140,7 +199,7 @@ khr_display::window khr_display::create_window(int width, int height) const
       ApplicationInfo.engineVersion = VK_MAKE_VERSION(0, 1, 0);
       ApplicationInfo.apiVersion = VK_MAKE_VERSION(1, 0, 0);
 
-      std::array<const char*, 14> extensions({"VK_KHR_display", "VK_KHR_surface", "VK_KHR_get_display_properties2", "VK_KHR_get_physical_device_properties2", "VK_KHR_external_memory_capabilities", "VK_EXT_direct_mode_display", "VK_KHR_get_surface_capabilities2", "VK_KHR_external_fence_capabilities", "VK_KHR_external_semaphore_capabilities", "VK_KHR_device_group_creation", "VK_KHR_surface_protected_capabilities", "VK_EXT_display_surface_counter", "VK_EXT_debug_report", "VK_EXT_debug_utils"});
+      std::array<const char*, 2> extensions({"VK_KHR_display", "VK_KHR_surface",/* "VK_KHR_get_display_properties2", "VK_KHR_get_physical_device_properties2", "VK_KHR_external_memory_capabilities", "VK_EXT_direct_mode_display", "VK_KHR_get_surface_capabilities2", "VK_KHR_external_fence_capabilities", "VK_KHR_external_semaphore_capabilities", "VK_KHR_device_group_creation", "VK_KHR_surface_protected_capabilities", "VK_EXT_display_surface_counter", "VK_EXT_debug_report", "VK_EXT_debug_utils"*/});
   
       VkInstanceCreateInfo cinfo;
 
@@ -259,82 +318,39 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
     window_base wb = WindowingBase::create_window(width, height);
 
     VkDevice device;
-    VkQueue graphicsQueue, copy_buffer_queue, presentQueue;
     VkRenderPass renderPass;
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
     VkCommandPool commandPool;
-    std::optional<unsigned int> graphicsFamilyIndex;
     std::vector<VkFramebuffer> swapChainFramebuffers;
     VkSwapchainKHR swapChain;
     VkFence executionFinishedFence;
 
     std::cout << "Creating vulkan surface " << std::endl;
+    std::vector<unsigned int> graphic_families = get_graphics_family (wb.physicalDevice);
+    std::vector<unsigned int> presentation_families = get_presentation_family (wb.physicalDevice, wb.surface);
+
+    std::cout << "graphic families: " << graphic_families.size() << " presentation families " << presentation_families.size()
+              << " highest priority " << presentation_families[0] << std::endl;
+    vulkan_queues queues;
     {
-      uint32_t queueFamilyCount = 0;
-      vkGetPhysicalDeviceQueueFamilyProperties(wb.physicalDevice, &queueFamilyCount, nullptr);
+      std::vector<VkDeviceQueueCreateInfo> queue_info;
+      std::unique_ptr<float[]> queue_priorities;
 
-      std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-      vkGetPhysicalDeviceQueueFamilyProperties(wb.physicalDevice, &queueFamilyCount, queueFamilies.data());
-
-      std::optional<unsigned int> presentationFamilyIndex;
-    
-      int i = 0;
-      for (const auto& queueFamily : queueFamilies) {
-        if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-          graphicsFamilyIndex = i;
-          std::cout << "graphic family has " << queueFamily.queueCount << std::endl;
-        }
-
-        {
-          VkBool32 presentSupport = false;
-          vkGetPhysicalDeviceSurfaceSupportKHR(wb.physicalDevice, i, wb.surface, &presentSupport);
-          if (queueFamily.queueCount > 0 && presentSupport) {
-            presentationFamilyIndex = i;
-          }
-        }
-
-        if (graphicsFamilyIndex && presentationFamilyIndex)
-          break;
-        i++;
-      }
-
-      std::unique_ptr<float[]> queue_priority { new float[3 + additional_graphic_queues]};
-      for (float* first = &queue_priority[0], *last = &queue_priority[0] + 3 + additional_graphic_queues
-             ; first != last; ++ first)
-        *first = 1.0f;
-      std::array<VkDeviceQueueCreateInfo, 2> queueInfo
-      ({
-        VkDeviceQueueCreateInfo {
-          VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO
-          , NULL
-          , 0
-          , *graphicsFamilyIndex
-          , 2 + additional_graphic_queues
-          , &queue_priority[0]
-        },
-        VkDeviceQueueCreateInfo {
-          VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO
-          , NULL
-          , 0
-          , *presentationFamilyIndex
-          , 1
-          , &queue_priority[0]
-        }
-      });
-      //assert(*graphicsFamilyIndex == *presentationFamilyIndex);
+      std::tie (queue_info, queue_priorities)
+        = vulkan_queues_create_queue_create_info (wb.physicalDevice, wb.surface);
 
       VkPhysicalDeviceFeatures deviceFeatures = {};
 
-      std::cout << "creating device" << std::endl;
+      // std::cout << "creating device" << std::endl;
       
       VkDeviceCreateInfo deviceCInfo = {};
       deviceCInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-      deviceCInfo.pQueueCreateInfos = &queueInfo[0];
-      deviceCInfo.queueCreateInfoCount = queueInfo.size();
+      deviceCInfo.pQueueCreateInfos = &queue_info[0];
+      deviceCInfo.queueCreateInfoCount = queue_info.size();
       deviceCInfo.pEnabledFeatures = &deviceFeatures;
-      std::array<const char*, 1> requiredDeviceExtensions({"VK_KHR_swapchain"/*, "VK_EXT_external_memory_dma_buf"
-                                                                               , "VK_KHR_external_memory_fd", "VK_KHR_external_memory"*/});
+      std::array<const char*, 1> requiredDeviceExtensions({"VK_KHR_swapchain"/*, "VK_EXT_external_memory_dma_buf"*/
+                                                           /*  , "VK_KHR_external_memory_fd", "VK_KHR_external_memory"*/});
       deviceCInfo.enabledExtensionCount = requiredDeviceExtensions.size();
       deviceCInfo.ppEnabledExtensionNames = &requiredDeviceExtensions[0];
   
@@ -346,10 +362,9 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
       }
 
       std::cout << "created device" << std::endl;
-      
-      vkGetDeviceQueue(device, *graphicsFamilyIndex, 0, &graphicsQueue);
-      vkGetDeviceQueue(device, *graphicsFamilyIndex, 1, &copy_buffer_queue);
-      vkGetDeviceQueue(device, *presentationFamilyIndex, 0, &presentQueue);
+
+      auto separated_queues = vulkan_queues_create_queues (device, wb.physicalDevice, wb.surface);
+      queues = vulkan_queues {separated_queues[0], separated_queues[1], separated_queues[2]};
 
       VkSurfaceCapabilitiesKHR capabilities;
       vkGetPhysicalDeviceSurfaceCapabilitiesKHR(wb.physicalDevice, wb.surface, &capabilities);
@@ -383,7 +398,7 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
       swapInfo.oldSwapchain = VK_NULL_HANDLE;
       swapInfo.preTransform = capabilities.currentTransform;
 
-      std::vector<uint32_t> indices({*graphicsFamilyIndex, *presentationFamilyIndex});
+      std::vector<uint32_t> indices({graphic_families[0], presentation_families[0]});
       swapInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;//VK_SHARING_MODE_CONCURRENT;
       swapInfo.queueFamilyIndexCount = 2;
       swapInfo.pQueueFamilyIndices = &indices[0];
@@ -490,7 +505,7 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
 
       VkCommandPoolCreateInfo poolInfo = {};
       poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-      poolInfo.queueFamilyIndex = *graphicsFamilyIndex;
+      poolInfo.queueFamilyIndex = /**graphicsFamilyIndex*/graphic_families[0];
       poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Optional
 
       if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
@@ -504,11 +519,21 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
         throw std::runtime_error("failed to create semaphores!");
     }
 
-    window w {{wb}, {}, {{{}, graphicsQueue, presentQueue, {}, {}
-          , swapChainImageFormat, swapChainExtent, device, wb.physicalDevice
-              , renderPass, commandPool, &w.shader_loader}}, *graphicsFamilyIndex
-              , swapChainFramebuffers, presentQueue, swapChain
-              , executionFinishedFence, copy_buffer_queue};
+    VkCommandPool mt_buffer_pool;
+    {
+      VkCommandPoolCreateInfo alloc_info {};
+      alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+      alloc_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+      alloc_info.queueFamilyIndex = /**graphicsFamilyIndex*/graphic_families[0];
+
+      
+    }
+
+    window w {{wb}, {}, {{{}/*, graphicsQueue, presentQueue*/, {}, {}
+              , swapChainImageFormat, swapChainExtent, device, wb.physicalDevice
+              , renderPass, commandPool, &w.shader_loader}}, /**graphicsFamilyIndex*/graphic_families[0]
+              , swapChainFramebuffers, swapChain
+              , executionFinishedFence, mt_buffer_pool, std::move(queues)};
     w.shader_loader = {"../fastdraw/res/shader/vulkan", device};
     // for faster loading later
     w.shader_loader.load(fastdraw::output::vulkan::shader::image_vertex);

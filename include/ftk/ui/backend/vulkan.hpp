@@ -11,10 +11,12 @@
 #define FTK_FTK_UI_BACKEND_VULKAN_HPP
 
 #include <fastdraw/output/vulkan/vulkan_output.hpp>
+#include <fastdraw/output/vulkan/mt_buffer_pool.hpp>
 
 #include <ftk/ui/backend/x11_base_fwd.hpp>
 #include <ftk/ui/backend/uv_fwd.hpp>
 #include <ftk/ui/backend/vulkan_draw.hpp>
+#include <ftk/ui/backend/vulkan_queues.hpp>
 
 #include <cstring>
 #include <array>
@@ -47,11 +49,35 @@ struct vulkan : WindowingBase
     fastdraw::output::vulkan::vulkan_output<int, point_type, color_type> voutput;
     int graphicsFamilyIndex;
     std::vector<VkFramebuffer> swapChainFramebuffers;
-    VkQueue presentation_queue;
     VkSwapchainKHR swapChain;
     VkFence executionFinished;
-    VkQueue copy_buffer_queue;
-    std::unique_ptr<std::mutex> copy_buffer_queue_mutex {new std::mutex};
+    fastdraw::output::vulkan::mt_buffer_pool command_buffer_pool;
+    ftk::ui::backend::vulkan_queues queues;
+
+    window (window_base base, fastdraw::output::vulkan::shader_loader shader_loader
+            , fastdraw::output::vulkan::vulkan_output<int, point_type, color_type> voutput
+            , int graphicsFamilyIndex, std::vector<VkFramebuffer> swapChainFramebuffers
+            , VkSwapchainKHR swapChain, VkFence executionFinished
+            , VkCommandPool command_pool
+            , ftk::ui::backend::vulkan_queues queues)
+      : window_base (base), shader_loader (shader_loader)
+      , voutput (voutput), graphicsFamilyIndex (graphicsFamilyIndex)
+      , swapChainFramebuffers (swapChainFramebuffers)
+      , swapChain (swapChain), executionFinished (executionFinished)
+      , command_buffer_pool {command_pool}, queues (std::move(queues))
+    {}
+
+    window (window && other)
+      : window_base (std::move(static_cast<window_base&>(*this)))
+      , shader_loader (std::move(other.shader_loader))
+      , voutput (std::move(other.voutput))
+      , graphicsFamilyIndex (std::move(other.graphicsFamilyIndex))
+      , swapChainFramebuffers (std::move(other.swapChainFramebuffers))
+      , swapChain (std::move(other.swapChain))
+      , executionFinished (std::move(other.executionFinished))
+      , command_buffer_pool (std::move(other.command_buffer_pool))
+      , queues (std::move(other.queues))
+    {}
   };
 
   window create_window (int width, int height) const;
