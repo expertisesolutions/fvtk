@@ -398,14 +398,31 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
       swapInfo.oldSwapchain = VK_NULL_HANDLE;
       swapInfo.preTransform = capabilities.currentTransform;
 
-      std::vector<uint32_t> indices({graphic_families[0], presentation_families[0]});
-      swapInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;//VK_SHARING_MODE_CONCURRENT;
-      swapInfo.queueFamilyIndexCount = 2;
-      swapInfo.pQueueFamilyIndices = &indices[0];
-      swapInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-      // swapInfo.queueFamilyIndexCount = 0;
-      // swapInfo.pQueueFamilyIndices = nullptr;
-
+      if (!queues.global_shared_families.empty()
+          && (queues.global_graphic_families.empty()
+              || queues.global_presentation_families.empty()))
+      {
+        std::cout << "we have a exclusive mode swapchain" << std::endl;
+        swapInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+      }
+      else
+      {
+        std::cout << "we have a concurrent mode swapchain" << std::endl;
+        std::vector<uint32_t> indices;
+        auto families = vulkan_queues_separate_queue_families (device, wb.physicalDevice, wb.surface);
+        for (auto&& index : families[0])
+          indices.push_back(index.index);
+        for (auto&& index : families[1])
+          indices.push_back(index.index);
+        for (auto&& index : families[2])
+          indices.push_back(index.index);
+        swapInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        swapInfo.queueFamilyIndexCount = indices.size();
+        swapInfo.pQueueFamilyIndices = &indices[0];
+        queues.push_back_swapchain ({{families[0].begin(), families[0].end()}
+                                     , {families[1].begin(), families[1].end()}
+                                     , {families[2].begin(), families[2].end()}});
+      }
 
       r = from_result(vkCreateSwapchainKHR(device, &swapInfo, nullptr, &swapChain));
       if (r != vulkan_error_code::success)

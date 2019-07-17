@@ -14,17 +14,20 @@
 #include <future>
 #include <condition_variable>
 
+#include <ftk/ui/backend/vulkan_queues.hpp>
+
 namespace ftk { namespace ui { namespace backend {
 
 struct vulkan_thread_pool
 {
   VkDevice device;
-  int family_index;
-  VkCommandPool command_pool;
+  // int family_index;
+  // VkCommandPool command_pool;
+  vulkan_queues* queues;
 
   struct thread_group_context
   {
-    VkQueue queue;
+    struct queue queue;
     std::unique_ptr<std::mutex> mutex {new std::mutex};
     bool locked;
     std::unique_ptr<std::condition_variable> condvar {new std::condition_variable};
@@ -38,50 +41,54 @@ struct vulkan_thread_pool
   int command_buffers_per_queue;
   unsigned int thread_pool_count;
   //unsigned int max_threads;
+  std::vector<VkCommandPool> command_pools;
 
-  vulkan_thread_pool (VkDevice device, int family_index
-                      , int queue_index_first, int queue_index_last
+  vulkan_thread_pool (VkDevice device
+                      , struct vulkan_queues* queues
                       , unsigned int threads
                       , unsigned int command_buffers_per_queue = 3)
-    : device(device), family_index (family_index)
+    : device(device)//, family_index (family_index)
+    , queues (queues)
     , threads_in_use_total (0u), command_buffers_per_queue(command_buffers_per_queue)
     , thread_pool_count (threads)
   {
     using fastdraw::output::vulkan::from_result;
     using fastdraw::output::vulkan::vulkan_error_code;
 
-    VkCommandPoolCreateInfo poolInfo = {};
-    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolInfo.queueFamilyIndex = family_index;
-    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT  | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT; // Optional
+    //for ();
 
-    if (vkCreateCommandPool(device, &poolInfo, nullptr, &command_pool) != VK_SUCCESS) {
-      throw std::runtime_error("failed to create command pool!");
-    }
+    // VkCommandPoolCreateInfo poolInfo = {};
+    // poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    // poolInfo.queueFamilyIndex = family_index;
+    // poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT  | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT; // Optional
 
-    const int queue_count = queue_index_last - queue_index_first;
-    //thread_pool_count = std::min((queue_count) * command_buffers_per_queue, max_threads);
+    // if (vkCreateCommandPool(device, &poolInfo, nullptr, &command_pool) != VK_SUCCESS) {
+    //   throw std::runtime_error("failed to create command pool!");
+    // }
 
-    if (thread_pool_count == 0)
-      throw -1;
+    // const int queue_count = queue_index_last - queue_index_first;
+    // //thread_pool_count = std::min((queue_count) * command_buffers_per_queue, max_threads);
 
-    thread_groups_context.reset (new thread_group_context[queue_count]);
-    command_buffers.reset (new VkCommandBuffer[thread_pool_count]);
-    threads_in_use.reset (new std::atomic_flag[thread_pool_count]);
-    for (auto first = &threads_in_use[0]
-           , last = &threads_in_use[0] + thread_pool_count
-           ; first != last; ++first)
-      first->clear();
+    // if (thread_pool_count == 0)
+    //   throw -1;
 
-    VkCommandBufferAllocateInfo allocInfo = {};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandPool = command_pool;
-    allocInfo.commandBufferCount = (queue_index_last - queue_index_first) * command_buffers_per_queue;
+    // thread_groups_context.reset (new thread_group_context[queue_count]);
+    // command_buffers.reset (new VkCommandBuffer[thread_pool_count]);
+    // threads_in_use.reset (new std::atomic_flag[thread_pool_count]);
+    // for (auto first = &threads_in_use[0]
+    //        , last = &threads_in_use[0] + thread_pool_count
+    //        ; first != last; ++first)
+    //   first->clear();
 
-    auto r = from_result(vkAllocateCommandBuffers(device, &allocInfo, static_cast<VkCommandBuffer*>(static_cast<void*>(&command_buffers[0]))));
-    if (r != vulkan_error_code::success)
-      throw -1;
+    // VkCommandBufferAllocateInfo allocInfo = {};
+    // allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    // allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    // allocInfo.commandPool = command_pool;
+    // allocInfo.commandBufferCount = (queue_index_last - queue_index_first) * command_buffers_per_queue;
+
+    // auto r = from_result(vkAllocateCommandBuffers(device, &allocInfo, static_cast<VkCommandBuffer*>(static_cast<void*>(&command_buffers[0]))));
+    // if (r != vulkan_error_code::success)
+    //   throw -1;
 
   }
 
@@ -94,22 +101,23 @@ struct vulkan_thread_pool
       thread_group_context* group;
       std::unique_lock<std::mutex> lock_;
 
-      lock (queue_lockable* queue)
-        : group (queue->group), lock_ (*queue->group->mutex)
-      {
-        group->locked = true;
-      }
+      lock (queue_lockable* queue);
+      //   : group (queue->group), lock_ (*queue->group->mutex)
+      // {
+      //   group->locked = true;
+      // }
 
-      ~lock()
-      {
-        group->locked = false;
-        group->condvar->notify_one();
-      }
+      ~lock();
+      // {
+      //   group->locked = false;
+      //   group->condvar->notify_one();
+      // }
 
-      VkQueue get_queue () const
-      {
-        return group->queue;
-      }
+      queue get_queue () const
+      // {
+      //   return group->queue;
+      // }
+        ;
     };
   };
 

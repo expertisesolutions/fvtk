@@ -31,13 +31,10 @@ namespace ftk { namespace ui { namespace backend {
 template <typename Loop, typename WindowingBase>
 struct vulkan : WindowingBase
 {
-  vulkan (Loop loop, int additional_graphic_queues)
-    : WindowingBase(loop), additional_graphic_queues(additional_graphic_queues)
+  vulkan (Loop loop) : WindowingBase(loop)
   {
   }
 
-  int additional_graphic_queues;
-  
   using window_base = typename WindowingBase::window;
   
   struct window : window_base
@@ -47,7 +44,7 @@ struct vulkan : WindowingBase
     typedef fastdraw::color::color_premultiplied_rgba<std::uint8_t> color_type;
     fastdraw::output::vulkan::shader_loader shader_loader;
     fastdraw::output::vulkan::vulkan_output<int, point_type, color_type> voutput;
-    int graphicsFamilyIndex;
+    //int graphicsFamilyIndex;
     std::vector<VkFramebuffer> swapChainFramebuffers;
     VkSwapchainKHR swapChain;
     VkFence executionFinished;
@@ -61,7 +58,7 @@ struct vulkan : WindowingBase
             , VkCommandPool command_pool
             , ftk::ui::backend::vulkan_queues queues)
       : window_base (base), shader_loader (shader_loader)
-      , voutput (voutput), graphicsFamilyIndex (graphicsFamilyIndex)
+      , voutput (voutput)//, graphicsFamilyIndex (graphicsFamilyIndex)
       , swapChainFramebuffers (swapChainFramebuffers)
       , swapChain (swapChain), executionFinished (executionFinished)
       , command_buffer_pool {command_pool}, queues (std::move(queues))
@@ -71,7 +68,7 @@ struct vulkan : WindowingBase
       : window_base (std::move(static_cast<window_base&>(*this)))
       , shader_loader (std::move(other.shader_loader))
       , voutput (std::move(other.voutput))
-      , graphicsFamilyIndex (std::move(other.graphicsFamilyIndex))
+        //, graphicsFamilyIndex (std::move(other.graphicsFamilyIndex))
       , swapChainFramebuffers (std::move(other.swapChainFramebuffers))
       , swapChain (std::move(other.swapChain))
       , executionFinished (std::move(other.executionFinished))
