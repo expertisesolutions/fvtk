@@ -261,8 +261,8 @@ struct vulkan_queues
                                     , [family] (auto&& f) { return f.index == family; });
       if (iterator == last)
       {
-        last = get_derived().get_main_families(queues).end();
-        iterator = std::find_if (queues.global_shared_families.begin(), last()
+        last = queues.global_shared_families.end();
+        iterator = std::find_if (queues.global_shared_families.begin(), last
                                  , [family] (auto&& f) { return f.index == family; });
         if (iterator == last)
           throw -1;

@@ -10,7 +10,7 @@
 #ifndef FTK_FTK_BACKEND_VULKAN_IMAGE_HPP
 #define FTK_FTK_BACKEND_VULKAN_IMAGE_HPP
 
-#include <ftk/ui/backend/vulkan_thread_pool.hpp>
+#include <ftk/ui/backend/vulkan_submission_pool.hpp>
 
 #include <future>
 
@@ -27,7 +27,7 @@ struct vulkan_image_loader
   VkDevice device;
   VkPhysicalDevice physical_device;
 
-  ftk::ui::backend::vulkan_thread_pool* graphic_thread_pool;
+  ftk::ui::backend::vulkan_submission_pool* graphic_thread_pool;
 
   typedef vulkan_image output_image_type;
 
