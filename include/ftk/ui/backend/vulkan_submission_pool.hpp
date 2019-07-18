@@ -16,8 +16,12 @@
 
 #include <ftk/ui/backend/vulkan_queues.hpp>
 
+#include <portable_concurrency/future>
+
 namespace ftk { namespace ui { namespace backend {
 
+namespace pc = portable_concurrency;
+      
 struct vulkan_submission_pool
 {
   VkDevice device;
@@ -39,8 +43,8 @@ struct vulkan_submission_pool
     //////
     std::mutex submission_mutex;
     std::vector<VkCommandBuffer> submission_buffers;
+    std::vector<pc::promise<void>> submission_promises;
     bool submission_winner = false;
-    
 
     family_info () = default;
     family_info (family_info&& other)
@@ -50,6 +54,7 @@ struct vulkan_submission_pool
       , submission_mutex {}
       , submission_buffers (std::move(other.submission_buffers))
       , submission_winner (false)
+      , submission_promises (std::move(other.submission_promises))
       // , reserved_queues (std::move(other.reserved_queues))
       // , reserved_queues_in_use (std::move(other.reserved_queues_in_use))
     {}
@@ -167,7 +172,7 @@ struct vulkan_submission_pool
   }
 
   template <typename F>
-  std::future<typename std::result_of<F(VkCommandBuffer, unsigned int family_index)>::type> run (F function)
+  std::future<typename std::result_of<F(VkCommandBuffer, unsigned int, std::future<void>)>::type> run (F function)
   {
     auto id = allocate_thread_index ();
     return std::async
@@ -179,7 +184,8 @@ struct vulkan_submission_pool
          // do we have to reset command_buffer ? Maybe reset after use, not before use
 
          auto family_id = thread_contexts[id].family_index;
-         auto r = function (thread_contexts[id].command_buffer, family_id);
+         pc::promise<void> submission;
+         auto r = function (thread_contexts[id].command_buffer, family_id, submission.get_future());
 
          auto winner = false;
          std::unique_lock<std::mutex> lock (families[family_id].submission_mutex);
@@ -187,17 +193,29 @@ struct vulkan_submission_pool
          if (!families[family_id].submission_winner)
            winner = families[family_id].submission_winner = true;
          families[family_id].submission_buffers.push_back (thread_contexts[id].command_buffer);
+         families[family_id].submission_promises.push_back (std::move(submission));
          lock.unlock();
 
          if (winner)
          {
            vulkan_queues::lock_graphic_queue queue (*this->queues, family_id);
            std::unique_lock<std::mutex> lock (families[family_id].submission_mutex);
-           auto submission_buffers = families[family_id].submission_buffers;
+           auto submission_buffers = std::move(families[family_id].submission_buffers);
            families[family_id].submission_buffers.clear();
+           auto submission_promises = std::move(families[family_id].submission_promises);
+           families[family_id].submission_promises.clear();
            // clear can push
            families[family_id].submission_winner = false;
            lock.unlock();
+
+           VkFence fence;
+           {
+             VkFenceCreateInfo info = {};
+             info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+             auto r = from_result(vkCreateFence(device, &info, nullptr, &fence));
+             if (r != vulkan_error_code::success)
+               throw std::system_error (make_error_code (r));
+           }
 
            std::cout << "submitting " << submission_buffers.size() << " buffers" << std::endl;
            VkSubmitInfo submitInfo = {};
@@ -206,12 +224,16 @@ struct vulkan_submission_pool
            submitInfo.pCommandBuffers = &submission_buffers[0];
 
            auto vkqueue = queue.get_queue();
-           auto r = from_result(vkQueueSubmit(vkqueue.vkqueue, 1, &submitInfo, VK_NULL_HANDLE));
+           auto r = from_result( ::vkQueueSubmit(vkqueue.vkqueue, 1, &submitInfo, fence));
            if (r != vulkan_error_code::success)
              throw std::system_error (make_error_code(r));
            
-           // submits
-           // wait on fence or semaphores?
+           r = from_result( ::vkWaitForFences (device, 1, &fence, VK_TRUE, -1));
+           if (r != vulkan_error_code::success)
+             throw std::system_error (make_error_code (r));
+
+           for (auto&& promise : submission_promises)
+             promise.set_value();
          }
 
          return r;

@@ -99,7 +99,7 @@ std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (s
   return
   graphic_thread_pool->run
     (
-     [path, image_loader, this] (VkCommandBuffer command_buffer, /*vulkan_thread_pool::queue_lockable queue_lockable*/unsigned int) -> output_image_type
+     [path, image_loader, this] (VkCommandBuffer command_buffer, unsigned int, auto submitted) -> output_image_type
      {
        using fastdraw::output::vulkan::from_result;
        using fastdraw::output::vulkan::vulkan_error_code;
@@ -278,32 +278,15 @@ std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (s
        vkEndCommandBuffer(command_buffer);
        std::cout << __FILE__ << ":" << __LINE__ << std::endl;
 
-       // VkSubmitInfo submitInfo = {};
-       // submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-       // submitInfo.commandBufferCount = 1;
-       // submitInfo.pCommandBuffers = &command_buffer;
-
-       // {
-       //   vulkan_thread_pool::queue_lockable::lock lock (&queue_lockable);
-
-       //   auto queue = lock.get_queue();
-         
-       //   std::cout << __FILE__ << ":" << __LINE__ << std::endl;
-       //   r = from_result(vkQueueSubmit(queue.vkqueue, 1, &submitInfo, VK_NULL_HANDLE));
-       //   if (r != vulkan_error_code::success)
-       //     throw std::system_error (make_error_code(r));
-       //   std::cout << __FILE__ << ":" << __LINE__ << std::endl;
-                 
-       //   //vkQueueWaitIdle(lock.get_queue());
-
-       //   // if (submit_error)
-       //   //   throw -1;
-       // }
-       // std::cout << __FILE__ << ":" << __LINE__ << std::endl;
-       // //vkDestroyBuffer(device, staging_pair.first, nullptr);
-       // std::cout << __FILE__ << ":" << __LINE__ << std::endl;
-       // //vkFreeMemory(device, staging_pair.second, nullptr);
-       // std::cout << __FILE__ << ":" << __LINE__ << std::endl;
+       submitted.then
+         ([device = device, staging_pair] (auto&&)
+          {
+            std::cout << __FILE__ << ":" << __LINE__ << std::endl;
+            vkDestroyBuffer(device, staging_pair.first, nullptr);
+            std::cout << __FILE__ << ":" << __LINE__ << std::endl;
+            vkFreeMemory(device, staging_pair.second, nullptr);
+            std::cout << __FILE__ << ":" << __LINE__ << std::endl;
+          });
 
        return {vulkan_image, vulkan_image_view};
      });

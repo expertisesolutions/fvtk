@@ -265,12 +265,13 @@ struct vulkan_queues
         iterator = std::find_if (queues.global_shared_families.begin(), last
                                  , [family] (auto&& f) { return f.index == family; });
         if (iterator == last)
-          throw -1;
+          return false;
       }
       family_ptr = &*iterator;
 
       if (!search_queue (queues))
-        throw -1;
+        return false;
+      return true;
     }
 
     lock_queue_base()

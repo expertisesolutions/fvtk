@@ -3,7 +3,7 @@ import testing : run ;
 
 project ftk ;
 
-alias ftk : /fastdraw//fastdraw : : : <include>include <cxxflags>-std=c++17 <linkflags>-lstdc++fs
+alias ftk : /fastdraw//fastdraw /pc-ts//pc-ts : : : <include>include <cxxflags>-std=c++17 <linkflags>-lstdc++fs
  ;
 
 alias testsuite :
