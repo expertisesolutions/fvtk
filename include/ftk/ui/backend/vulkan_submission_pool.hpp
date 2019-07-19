@@ -171,12 +171,41 @@ struct vulkan_submission_pool
     }
   }
 
+  template <typename T>
+  struct is_future : std::false_type
+  {};
+
+  // template <typename T>
+  // struct is_future<std::future<T>> : std::true_type {};
+
+  // template <typename T>
+  // struct is_future<std::shared_future<T>> : std::true_type {};
+
+  template <typename T>
+  struct is_future<pc::shared_future<T>> : std::true_type {};
+
+  template <typename T>
+  struct is_future<pc::future<T>> : std::true_type {};
+  
   template <typename F>
-  std::future<typename std::result_of<F(VkCommandBuffer, unsigned int, std::future<void>)>::type> run (F function)
+  struct result_type_t
+  {
+    typedef typename std::result_of<F(VkCommandBuffer, unsigned int, pc::future<void>)>::type f_type;
+
+    typedef typename
+      std::conditional
+    <is_future<f_type>::value
+     , f_type
+     , pc::future<f_type>>::type type;
+  };
+
+  template <typename F>
+  typename result_type_t<F>::type run (F function)
   {
     auto id = allocate_thread_index ();
-    return std::async
-      ([function, id, this]
+    return pc::async
+      (pc::inplace_executor
+       , [function, id, this]
        {
          using fastdraw::output::vulkan::from_result;
          using fastdraw::output::vulkan::vulkan_error_code;

@@ -32,7 +32,7 @@ struct vulkan_image_loader
   typedef vulkan_image output_image_type;
 
   template <typename I>
-  std::future<output_image_type> load (std::filesystem::path path, I image_loader) const;
+  pc::future<output_image_type> load (std::filesystem::path path, I image_loader) const;
 };
       
 } } }

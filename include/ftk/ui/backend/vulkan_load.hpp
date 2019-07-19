@@ -94,12 +94,12 @@ bool operator>=(vulkan_buffer_token<U> lhs, vulkan_buffer_token<U> rhs)
 }
 
 template <typename I>
-std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (std::filesystem::path path, I image_loader) const
+pc::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (std::filesystem::path path, I image_loader) const
 {
   return
   graphic_thread_pool->run
     (
-     [path, image_loader, this] (VkCommandBuffer command_buffer, unsigned int, auto submitted) -> output_image_type
+     [path, image_loader, this] (VkCommandBuffer command_buffer, unsigned int, auto submitted) -> pc::future<output_image_type>
      {
        using fastdraw::output::vulkan::from_result;
        using fastdraw::output::vulkan::vulkan_error_code;
@@ -278,17 +278,18 @@ std::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (s
        vkEndCommandBuffer(command_buffer);
        std::cout << __FILE__ << ":" << __LINE__ << std::endl;
 
-       submitted.then
-         ([device = device, staging_pair] (auto&&)
+
+       return submitted.then
+         ([device = device, staging_pair, vulkan_image, vulkan_image_view] (auto&&)
+           -> vulkan_image_loader::output_image_type
           {
             std::cout << __FILE__ << ":" << __LINE__ << std::endl;
             vkDestroyBuffer(device, staging_pair.first, nullptr);
             std::cout << __FILE__ << ":" << __LINE__ << std::endl;
             vkFreeMemory(device, staging_pair.second, nullptr);
             std::cout << __FILE__ << ":" << __LINE__ << std::endl;
+            return {vulkan_image, vulkan_image_view};
           });
-
-       return {vulkan_image, vulkan_image_view};
      });
 }
 
