@@ -218,7 +218,7 @@ struct vulkan_submission_pool
 
          auto winner = false;
          std::unique_lock<std::mutex> lock (families[family_id].submission_mutex);
-         // CAS can push -- winner submits (pero no mucho)
+         // CAS can push -- winner submits
          if (!families[family_id].submission_winner)
            winner = families[family_id].submission_winner = true;
          families[family_id].submission_buffers.push_back (thread_contexts[id].command_buffer);
@@ -263,6 +263,8 @@ struct vulkan_submission_pool
 
            for (auto&& promise : submission_promises)
              promise.set_value();
+           threads_in_use[id].clear();
+           threads_in_use_total--;
          }
 
          return r;

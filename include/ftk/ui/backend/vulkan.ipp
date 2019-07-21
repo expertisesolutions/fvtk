@@ -102,7 +102,14 @@ typename xlib_surface<Loop>::window xlib_surface<Loop>::create_window(int width,
       ApplicationInfo.engineVersion = VK_MAKE_VERSION(0, 1, 0);
       ApplicationInfo.apiVersion = VK_MAKE_VERSION(1, 0, 0);
 
-      std::array<const char*, 2> extensions({"VK_KHR_surface", "VK_KHR_xlib_surface"});
+      std::array<const char*, 5> extensions
+        (
+         {  "VK_KHR_surface"
+          , "VK_KHR_xlib_surface"
+          , "VK_KHR_get_physical_device_properties2"
+          , "VK_EXT_debug_report"
+          , "VK_EXT_debug_utils"
+        });
   
       VkInstanceCreateInfo cinfo;
 
@@ -199,7 +206,14 @@ khr_display::window khr_display::create_window(int width, int height) const
       ApplicationInfo.engineVersion = VK_MAKE_VERSION(0, 1, 0);
       ApplicationInfo.apiVersion = VK_MAKE_VERSION(1, 0, 0);
 
-      std::array<const char*, 2> extensions({"VK_KHR_display", "VK_KHR_surface",/* "VK_KHR_get_display_properties2", "VK_KHR_get_physical_device_properties2", "VK_KHR_external_memory_capabilities", "VK_EXT_direct_mode_display", "VK_KHR_get_surface_capabilities2", "VK_KHR_external_fence_capabilities", "VK_KHR_external_semaphore_capabilities", "VK_KHR_device_group_creation", "VK_KHR_surface_protected_capabilities", "VK_EXT_display_surface_counter", "VK_EXT_debug_report", "VK_EXT_debug_utils"*/});
+      std::array<const char*, 4> extensions
+        (
+         {  "VK_KHR_display"
+          , "VK_KHR_surface"
+          , "VK_EXT_debug_report"
+          , "VK_EXT_debug_utils"
+        });
+      // /* "VK_KHR_get_display_properties2", "VK_KHR_get_physical_device_properties2", "VK_KHR_external_memory_capabilities", "VK_EXT_direct_mode_display", "VK_KHR_get_surface_capabilities2", "VK_KHR_external_fence_capabilities", "VK_KHR_external_semaphore_capabilities", "VK_KHR_device_group_creation", "VK_KHR_surface_protected_capabilities", "VK_EXT_display_surface_counter", */,
   
       VkInstanceCreateInfo cinfo;
 
@@ -349,8 +363,14 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
       deviceCInfo.pQueueCreateInfos = &queue_info[0];
       deviceCInfo.queueCreateInfoCount = queue_info.size();
       deviceCInfo.pEnabledFeatures = &deviceFeatures;
-      std::array<const char*, 1> requiredDeviceExtensions({"VK_KHR_swapchain"/*, "VK_EXT_external_memory_dma_buf"*/
-                                                           /*  , "VK_KHR_external_memory_fd", "VK_KHR_external_memory"*/});
+      std::array<const char*, 2> requiredDeviceExtensions
+        ({"VK_KHR_swapchain"
+          , VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME
+
+
+          /*, "VK_EXT_external_memory_dma_buf"*/
+          /*  , "VK_KHR_external_memory_fd", "VK_KHR_external_memory"*/
+        });
       deviceCInfo.enabledExtensionCount = requiredDeviceExtensions.size();
       deviceCInfo.ppEnabledExtensionNames = &requiredDeviceExtensions[0];
   
@@ -463,7 +483,7 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
       VkAttachmentDescription colorAttachment = {};
       colorAttachment.format = swapChainImageFormat;
       colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-      colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+      colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
       colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -523,7 +543,7 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
       VkCommandPoolCreateInfo poolInfo = {};
       poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
       poolInfo.queueFamilyIndex = /**graphicsFamilyIndex*/graphic_families[0];
-      poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Optional
+      poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT; // Optional
 
       if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create command pool!");

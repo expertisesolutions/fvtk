@@ -281,12 +281,13 @@ struct vulkan_queues
     lock_queue_base(vulkan_queues& queues)
       : queue_index(0)
     {
+    again:
       if (!search_family (queues, get_derived().get_main_families(queues).begin()
                           , get_derived().get_main_families(queues).end()))
       {
         if (!search_family (queues, queues.global_shared_families.begin()
                             , queues.global_shared_families.end()))
-          throw -1;
+          goto again;
       }
     }
 

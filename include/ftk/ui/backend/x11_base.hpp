@@ -118,6 +118,7 @@ struct x11_base
     
   void connect()
   {
+    XInitThreads();
     display = XOpenDisplay(nullptr);
     if (display)
     {
