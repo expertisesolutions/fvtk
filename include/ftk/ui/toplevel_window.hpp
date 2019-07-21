@@ -175,9 +175,6 @@ struct toplevel_window
        }
       };
 
-    auto const static image_pipeline = fastdraw::output::vulkan::create_image_pipeline (window.voutput);
-    static const VkSampler sampler = detail::render_thread_create_sampler (window.voutput.device);
-    static const VkRenderPass renderPass = create_compatible_render_pass();
     auto invalidated_vbuffer = vbuffer.size() == vbuffer.capacity();
     auto buffer_cache_offset =  vbuffer.push_back (vinfo);
     if (invalidated_vbuffer)
@@ -252,6 +249,42 @@ struct toplevel_window
            )}
          , buffer_cache_offset};
     return it;
+  }
+  void replace_image_view (image_iterator image, VkImageView view)
+  {
+    vkFreeCommandBuffers (window.voutput.device, window.voutput.command_pool
+                          , 2, image->cache->command_buffer);
+    image->must_draw[0] = true;
+    image->must_draw[1] = true;
+    image->image_view = view;
+    image->cache = toplevel_window_command_buffer_cache
+        {{create_command_buffer
+          (window.voutput.command_pool
+           , window.voutput.device
+           , window.swapChainFramebuffers[0]
+           , window.voutput.swapChainExtent
+           , renderPass
+           , vbuffer.get_buffer()
+           , sampler
+           , image->image_view
+           , image->x, image->y, image->width, image->height
+           , image->cache->vertex_buffer_offset
+           , image_pipeline
+           )
+          , create_command_buffer
+          (window.voutput.command_pool
+           , window.voutput.device
+           , window.swapChainFramebuffers[1]
+           , window.voutput.swapChainExtent
+           , renderPass
+           , vbuffer.get_buffer()
+           , sampler
+           , image->image_view
+           , image->x, image->y, image->width, image->height
+           , image->cache->vertex_buffer_offset
+           , image_pipeline
+           )}
+         , image->cache->vertex_buffer_offset};
   }
   void move_image (image_iterator image, std::int32_t x, std::int32_t y)
   {
@@ -371,6 +404,10 @@ struct toplevel_window
   vertex_buffer <vertex_info> vbuffer;
   //std::vector<toplevel_window_command_buffer_cache> buffer_cache;
   std::mutex image_mutex; // for images vector and command_buffers cache
+  fastdraw::output::vulkan::vulkan_draw_info const image_pipeline
+    = fastdraw::output::vulkan::create_image_pipeline (window.voutput);
+  VkSampler const sampler = detail::render_thread_create_sampler (window.voutput.device);
+  VkRenderPass const renderPass = create_compatible_render_pass();
 };
     
 } }
