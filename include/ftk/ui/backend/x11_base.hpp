@@ -59,6 +59,7 @@ struct x11_base
   boost::signals2::signal<void ()> exposure_signal;
   boost::signals2::signal<void (XKeyEvent)> key_signal;
   boost::signals2::signal<void (XMotionEvent)> motion_signal;
+  boost::signals2::signal<void (XButtonEvent)> button_signal;
   
   struct window
   {
@@ -106,6 +107,7 @@ struct x11_base
         else if ((xev.type == ButtonPress || xev.type == ButtonRelease) && !(xev.type == ButtonPress && last_was_buttonpress))
         {
           last_was_buttonpress = xev.type == ButtonPress;
+          button_signal (xev.xbutton);
         }
         else if (xev.type == MotionNotify)
         {

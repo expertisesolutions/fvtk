@@ -72,8 +72,10 @@ VkCommandBuffer create_command_buffer (VkCommandPool pool
   buffers.push_back(buffer);
   offsets.push_back(buffer_cache_offset);
   buffers.push_back(buffer);
+  offsets.push_back(buffer_cache_offset);
+  buffers.push_back(buffer);
   
-  vkCmdBindVertexBuffers(commandBuffer, 0, 2, &buffers[0], &offsets[0]);
+  vkCmdBindVertexBuffers(commandBuffer, 0, 3, &buffers[0], &offsets[0]);
 
   VkDescriptorImageInfo imageInfo = {};
   imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

@@ -50,7 +50,8 @@ struct vertex_buffer
     for (uint32_t i = 0; i < mem_properties.memoryTypeCount; i++)
     {
       if ((mem_requirements.memoryTypeBits & (1 << i))
-          && (mem_properties.memoryTypes[i].propertyFlags
+          && ((mem_properties.memoryTypes[i].propertyFlags
+               & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
               ==  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
       {
         info.memoryTypeIndex = i;

@@ -148,19 +148,25 @@ struct toplevel_window
        {
         fastdraw::coordinates::ratio(x, whole_width)
         , fastdraw::coordinates::ratio(y, whole_height)
+        , 0.0f, 1.0f
         , fastdraw::coordinates::ratio(x + width, whole_width)
         , fastdraw::coordinates::ratio(y, whole_height)
+        , 0.0f, 1.0f
         , fastdraw::coordinates::ratio(x + width, whole_width)
         , fastdraw::coordinates::ratio(y + height, whole_height)
+        , 0.0f, 1.0f
         , fastdraw::coordinates::ratio(x + width, whole_width)
         , fastdraw::coordinates::ratio(y + height, whole_height)
+        , 0.0f, 1.0f
         , fastdraw::coordinates::ratio(x, whole_width)
         , fastdraw::coordinates::ratio(y + height, whole_height)
+        , 0.0f, 1.0f
         , fastdraw::coordinates::ratio(x, whole_width)
         , fastdraw::coordinates::ratio(y, whole_height)
+        , 0.0f, 1.0f
        }
        , {
-          0.0f, 0.0f
+            0.0f, 0.0f
           , 1.0f, 0.0f
           , 1.0f, 1.0f
           , 1.0f, 1.0f
@@ -168,7 +174,7 @@ struct toplevel_window
           , 0.0f, 0.0f
        }
        , {
-          1.0f, 0.0f, 0.0f, 0.0f
+            1.0f, 0.0f, 0.0f, 0.0f
           , 0.0f, 1.0f, 0.0f, 0.0f
           , 0.0f, 0.0f, 1.0f, 0.0f
           , 0.0f, 0.0f, 0.0f, 1.0f
@@ -323,16 +329,22 @@ struct toplevel_window
                          {
                              fastdraw::coordinates::ratio(x, whole_width)
                            , fastdraw::coordinates::ratio(y, whole_height)
+                           , 0.0f, 1.0f
                            , fastdraw::coordinates::ratio(x + width, whole_width)
                            , fastdraw::coordinates::ratio(y, whole_height)
+                           , 0.0f, 1.0f
                            , fastdraw::coordinates::ratio(x + width, whole_width)
                            , fastdraw::coordinates::ratio(y + height, whole_height)
+                           , 0.0f, 1.0f
                            , fastdraw::coordinates::ratio(x + width, whole_width)
                            , fastdraw::coordinates::ratio(y + height, whole_height)
+                           , 0.0f, 1.0f
                            , fastdraw::coordinates::ratio(x, whole_width)
                            , fastdraw::coordinates::ratio(y + height, whole_height)
+                           , 0.0f, 1.0f
                            , fastdraw::coordinates::ratio(x, whole_width)
                            , fastdraw::coordinates::ratio(y, whole_height)
+                           , 0.0f, 1.0f
                          }
                          , {
                               0.0f, 0.0f
@@ -359,17 +371,19 @@ struct toplevel_window
   void load_background (toplevel_window_image bg)
   {
     background = bg;
+    //auto z = 1.0f;//16777215.0f;
+    auto z = 0.5f;
     
     unsigned int offset
       = vbuffer.push_back (vertex_info
                        {
                          {
-                             -1.0f, -1.0f
-                           ,  1.0f, -1.0f
-                           ,  1.0f,  1.0f
-                           ,  1.0f,  1.0f
-                           , -1.0f, 1.0f
-                           , -1.0f, -1.0f
+                             -1.0f, -1.0f, z, 1.0f
+                           ,  1.0f, -1.0f, z, 1.0f
+                           ,  1.0f,  1.0f, z, 1.0f
+                           ,  1.0f,  1.0f, z, 1.0f
+                           , -1.0f,  1.0f, z, 1.0f
+                           , -1.0f, -1.0f, z, 1.0f
                          }
                          , {
                               0.0f, 0.0f
@@ -381,7 +395,7 @@ struct toplevel_window
                          }
                          , {
                               1.0f, 0.0f, 0.0f, 0.0f
-                            , 0.0f, 1.0f, 0.0f, 0.0f
+                            , 1.0f, 1.0f, 0.0f, 0.0f
                             , 0.0f, 0.0f, 1.0f, 0.0f
                             , 0.0f, 0.0f, 0.0f, 1.0f
                          }
@@ -393,7 +407,7 @@ struct toplevel_window
 
   struct vertex_info
   {
-    float vertices [12];
+    float vertices [24];
     float tex_coordinates [12];
     float transform_matrix [16];
   };

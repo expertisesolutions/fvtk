@@ -480,6 +480,86 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
     
       }
 
+      VkDeviceMemory depth_stencil_memory;
+      VkImage depth_stencil_image;
+      VkImageView depth_stencil_image_view;
+      auto depth_format = VK_FORMAT_D24_UNORM_S8_UINT;
+      {
+        VkImageCreateInfo imageInfo = {};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.extent.width = swapChainExtent.width;
+        imageInfo.extent.height = swapChainExtent.height;
+        imageInfo.extent.depth = 1;
+        imageInfo.mipLevels = 1;
+        imageInfo.arrayLayers = 1;
+        imageInfo.format = depth_format; //VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        //imageInfo.flags = 0; // Optional
+
+        auto r = from_result(vkCreateImage(device, &imageInfo, nullptr, &depth_stencil_image));
+        if (r != vulkan_error_code::success)
+          throw std::system_error (make_error_code(r));
+
+
+        VkMemoryRequirements memRequirements;
+        vkGetImageMemoryRequirements(device, depth_stencil_image, &memRequirements);
+
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(wb.physicalDevice, &memProperties);
+        uint32_t memory_index;
+        for (memory_index = 0; memory_index < memProperties.memoryTypeCount; memory_index++) {
+          if ((memRequirements.memoryTypeBits & (1 << memory_index))
+              && (memProperties.memoryTypes[memory_index].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+            break;
+        }
+        assert (memory_index != memProperties.memoryTypeCount);
+
+        VkMemoryAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex = memory_index;
+
+        r = from_result (vkAllocateMemory(device, &allocInfo, nullptr, &depth_stencil_memory));
+        if (r != vulkan_error_code::success)
+          throw std::system_error(make_error_code(r));
+
+        vkBindImageMemory(device, depth_stencil_image, depth_stencil_memory, 0);
+        
+        VkImageViewCreateInfo viewInfo = {};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = depth_stencil_image;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format = depth_format;
+        viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = 1;
+       
+        r = from_result (vkCreateImageView(device, &viewInfo, nullptr, &depth_stencil_image_view));
+        if (r != vulkan_error_code::success)
+          throw std::system_error(make_error_code (r));
+      }
+
+      VkAttachmentDescription depthAttachment = {};
+      depthAttachment.format = depth_format;
+      depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+      depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+      depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+      depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+      depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+      depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+      VkAttachmentReference depthAttachmentRef = {};
+      depthAttachmentRef.attachment = 1;
+      depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      
       VkAttachmentDescription colorAttachment = {};
       colorAttachment.format = swapChainImageFormat;
       colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -498,6 +578,7 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
       subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
       subpass.colorAttachmentCount = 1;
       subpass.pColorAttachments = &colorAttachmentRef;
+      subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
       VkSubpassDependency dependency = {};
       dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -507,10 +588,11 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
       dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
       dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
+      std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
       VkRenderPassCreateInfo renderPassInfo = {};
       renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-      renderPassInfo.attachmentCount = 1;
-      renderPassInfo.pAttachments = &colorAttachment;
+      renderPassInfo.attachmentCount = attachments.size();
+      renderPassInfo.pAttachments = attachments.data();
       renderPassInfo.subpassCount = 1;
       renderPassInfo.pSubpasses = &subpass;
       renderPassInfo.dependencyCount = 1;
@@ -522,14 +604,16 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
 
       swapChainFramebuffers.resize(imageCount);
       for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-        VkImageView attachments[] = {
-                                     swapChainImageViews[i]
-        };
+        VkImageView attachments[] =
+          {
+           swapChainImageViews[i]
+           , depth_stencil_image_view
+          };
       
         VkFramebufferCreateInfo framebufferInfo = {};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebufferInfo.renderPass = renderPass;
-        framebufferInfo.attachmentCount = 1;
+        framebufferInfo.attachmentCount = sizeof(attachments)/sizeof(attachments[0]);
         framebufferInfo.pAttachments = attachments;
         framebufferInfo.width = swapChainExtent.width;
         framebufferInfo.height = swapChainExtent.height;
