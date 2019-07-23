@@ -375,6 +375,8 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     layoutInfo.bindingCount = 1; //static_cast<uint32_t>(bindings.size());
     layoutInfo.pBindings = /*bindings.data()*/&samplerLayoutBinding;
+    layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+    
 
   CHRONO_COMPARE()
     VkDescriptorSetLayout descriptorSetLayout;
@@ -902,7 +904,8 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     layoutInfo.bindingCount = 1; //static_cast<uint32_t>(bindings.size());
     layoutInfo.pBindings = /*bindings.data()*/&samplerLayoutBinding;
-
+    layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+    
   CHRONO_COMPARE()
     VkDescriptorSetLayout descriptorSetLayout;
     auto r = from_result(vkCreateDescriptorSetLayout(output.device, &layoutInfo, nullptr, &descriptorSetLayout));
@@ -937,46 +940,50 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     // bufferInfo.offset = 0;
     // bufferInfo.range = sizeof(UniformBufferObject);
 
-    VkVertexInputBindingDescription bindingDescriptions[2] = {};
+    VkVertexInputBindingDescription bindingDescriptions[3] = {};
     bindingDescriptions[0].binding = 0;
-    bindingDescriptions[0].stride = sizeof(float)*2;
+    bindingDescriptions[0].stride = sizeof(float)*4;
     bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
     bindingDescriptions[1].binding = 1;
-    bindingDescriptions[1].stride = 0;//sizeof(float)*4;
-    bindingDescriptions[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+    bindingDescriptions[1].stride = sizeof(float)*2;
+    bindingDescriptions[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    
+    bindingDescriptions[2].binding = 2;
+    bindingDescriptions[2].stride = 0;
+    bindingDescriptions[2].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
     
     VkVertexInputAttributeDescription attributeDescriptions[6] = {};
 
     attributeDescriptions[0].binding = 0;
     attributeDescriptions[0].location = 0;
-    attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+    attributeDescriptions[0].format = VK_FORMAT_R32G32B32A32_SFLOAT;
     attributeDescriptions[0].offset = 0;
 
-    attributeDescriptions[1].binding = 0;
+    attributeDescriptions[1].binding = 1;
     attributeDescriptions[1].location = 1;
     attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescriptions[1].offset = sizeof(float)*12;
+    attributeDescriptions[1].offset = sizeof(float)*24;
 
-    attributeDescriptions[2].binding = 1;
+    attributeDescriptions[2].binding = 2;
     attributeDescriptions[2].location = 2;
     attributeDescriptions[2].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[2].offset = sizeof(float)*12 + sizeof(float)*12;
+    attributeDescriptions[2].offset = sizeof(float)*24 + sizeof(float)*12;
 
-    attributeDescriptions[3].binding = 1;
+    attributeDescriptions[3].binding = 2;
     attributeDescriptions[3].location = 3;
     attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[3].offset = sizeof(float)*12 + sizeof(float)*12 + sizeof(float)*4;
+    attributeDescriptions[3].offset = sizeof(float)*24 + sizeof(float)*12 + sizeof(float)*4;
 
-    attributeDescriptions[4].binding = 1;
+    attributeDescriptions[4].binding = 2;
     attributeDescriptions[4].location = 4;
     attributeDescriptions[4].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[4].offset = sizeof(float)*12 + sizeof(float)*12 + sizeof(float)*4*2;
+    attributeDescriptions[4].offset = sizeof(float)*24 + sizeof(float)*12 + sizeof(float)*4*2;
 
-    attributeDescriptions[5].binding = 1;
+    attributeDescriptions[5].binding = 2;
     attributeDescriptions[5].location = 5;
     attributeDescriptions[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[5].offset = sizeof(float)*12 + sizeof(float)*12 + sizeof(float)*4*3;
+    attributeDescriptions[5].offset = sizeof(float)*24 + sizeof(float)*12 + sizeof(float)*4*3;
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -1071,20 +1078,34 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     
     VkPipelineLayout pipelineLayout;
 
-    std::size_t desc_layout_size = 1;
-    std::unique_ptr<VkDescriptorSetLayout[]> descriptor_set_layouts{new VkDescriptorSetLayout[desc_layout_size]};
-    for(auto first = &descriptor_set_layouts[0], last = first + desc_layout_size; first != last; ++first)
-      *first = descriptorSetLayout;          
+    // std::size_t desc_layout_size = 1;
+    // std::unique_ptr<VkDescriptorSetLayout[]> descriptor_set_layouts{new VkDescriptorSetLayout[desc_layout_size]};
+    // for(auto first = &descriptor_set_layouts[0], last = first + desc_layout_size; first != last; ++first)
+    //   *first = descriptorSetLayout;          
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = desc_layout_size; // Optional
-    pipelineLayoutInfo.pSetLayouts = &descriptor_set_layouts[0]; // Optional
+    // pipelineLayoutInfo.setLayoutCount = desc_layout_size; // Optional
+    // pipelineLayoutInfo.pSetLayouts = &descriptor_set_layouts[0]; // Optional
+    pipelineLayoutInfo.setLayoutCount = 1; // Optional
+    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // Optional
   CHRONO_COMPARE()
     r = from_result(vkCreatePipelineLayout(output.device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
     if (r != vulkan_error_code::success)
       throw std::system_error(make_error_code(r));
   CHRONO_COMPARE()
+
+    VkPipelineDepthStencilStateCreateInfo depthStencil = {};
+    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    //depthStencil.depthTestEnable = VK_TRUE;
+    depthStencil.depthWriteEnable = VK_TRUE;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_GREATER;
+    //depthStencil.depthBoundsTestEnable = VK_FALSE;
+    //depthStencil.minDepthBounds = 0.0f; // Optional
+    //depthStencil.maxDepthBounds = 1.0f; // Optional
+    //depthStencil.stencilTestEnable = VK_FALSE;
+    //depthStencil.front = {}; // Optional
+    //depthStencil.back = {}; // Optional
 
     VkGraphicsPipelineCreateInfo pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1095,7 +1116,7 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     pipelineInfo.pViewportState = &viewportState;
     pipelineInfo.pRasterizationState = &rasterizer;
     pipelineInfo.pMultisampleState = &multisampling;
-    pipelineInfo.pDepthStencilState = nullptr; // Optional
+    pipelineInfo.pDepthStencilState = &depthStencil;
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDynamicState = nullptr; // Optional
     pipelineInfo.layout = pipelineLayout;

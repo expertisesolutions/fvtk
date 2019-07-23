@@ -30,6 +30,7 @@ struct png
   
   png (std::filesystem::path path)
   {
+    std::cout << "created png this " << this << std::endl;
     fp.reset (std::fopen (path.c_str(), "rb"));
     if (!fp)
       throw -1;
@@ -75,36 +76,23 @@ struct png
       png_set_gray_to_rgb(png_ptr);
 
     png_read_update_info(png_ptr, info_ptr);
-    
-    /*
-                     PNG_COLOR_TYPE_GRAY
-                        (bit depths 1, 2, 4, 8, 16)
-                     PNG_COLOR_TYPE_GRAY_ALPHA
-                        (bit depths 8, 16)
-                     PNG_COLOR_TYPE_PALETTE
-                        (bit depths 1, 2, 4, 8)
-                     PNG_COLOR_TYPE_RGB
-                        (bit_depths 8, 16)
-                     PNG_COLOR_TYPE_RGB_ALPHA
-                        (bit_depths 8, 16)
-
-                     PNG_COLOR_MASK_PALETTE
-                     PNG_COLOR_MASK_COLOR
-                     PNG_COLOR_MASK_ALPHA
-    */
   }
 
   ~png()
   {
     if (png_ptr)
+    {
+      std::cout << "destryoing " << this << std::endl;
       png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+    }
   }
 
   png(png&& other)
-    : png_ptr (other.png_ptr), info_ptr (other.info_ptr)
+    : png_ptr (std::move(other.png_ptr)), info_ptr (std::move(other.info_ptr))
+    , fp (std::move(other.fp))
   {
-    png_ptr = nullptr;
-    info_ptr = nullptr;
+    other.png_ptr = nullptr;
+    other.info_ptr = nullptr;
   }
 
   int32_t width () const
@@ -139,6 +127,7 @@ struct png
 
   void write_to (char* buffer, std::size_t size) const
   {
+    std::cout << "reading this " << this << std::endl;
     png_byte** row_pointers = new png_byte*[height()];
     for (int32_t i = 0; i != height(); ++i)
     {
