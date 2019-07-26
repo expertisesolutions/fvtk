@@ -29,11 +29,11 @@ struct vertex_buffer
     using fastdraw::output::vulkan::from_result;
 
     std::cout << "grow to at least to " << to << std::endl;
-    // if (allocated_ != 0)
-    // {
-    //   vkDestroyBuffer (device, buffer, nullptr);
-    //   vkFreeMemory (device, memory, nullptr);
-    // }
+    if (allocated_ != 0)
+    {
+      vkDestroyBuffer (device, buffer, nullptr);
+      vkFreeMemory (device, memory, nullptr);
+    }
 
     create_buffer (to);
 
@@ -51,8 +51,8 @@ struct vertex_buffer
     {
       if ((mem_requirements.memoryTypeBits & (1 << i))
           && ((mem_properties.memoryTypes[i].propertyFlags
-               & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
-              ==  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+               & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)))
+               ==  (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
       {
         info.memoryTypeIndex = i;
         break;
@@ -104,7 +104,7 @@ struct vertex_buffer
     std::cout << "replacing at offset " << offset << std::endl;
     map (allocated_);
     std::tuple <T...> t {ts...};
-    std::memcpy (map_pointer + offset * elements_size, &t, elements_size);
+    std::memcpy (static_cast<char*>(map_pointer) + offset * elements_size, &t, elements_size);
     cpu_memory[offset] = t;
     unmap ();
   }
@@ -119,7 +119,7 @@ struct vertex_buffer
     else
       map (allocated_);
     std::tuple <T...> t {ts...};
-    std::memcpy (map_pointer + offset, &t, elements_size);
+    std::memcpy (static_cast<char*>(map_pointer) + offset, &t, elements_size);
     cpu_memory.push_back (t);
     std::cout << "new size " << cpu_memory.size() << std::endl;
     unmap ();

@@ -11,6 +11,7 @@
 #define FTK_FTK_UI_TOPLEVEL_WINDOW_HPP
 
 #include <ftk/ui/backend/vulkan_vertex_buffer.hpp>
+#include <ftk/ui/backend/vulkan_storage_zindex.hpp>
 #include <ftk/ui/backend/vulkan_command_buffer_cache.hpp>
 
 #include <functional>
@@ -186,6 +187,7 @@ struct toplevel_window
     if (invalidated_vbuffer)
     {
       auto buffer_cache_offset =  vbuffer.push_back (vinfo);
+      static_cast<void>(buffer_cache_offset); // it is the last element
 
       for (auto&& image : images)
       {

@@ -22,12 +22,13 @@ struct vulkan_image
   VkImageView image_view;
 };
 
+template <typename Executor>
 struct vulkan_image_loader
 {
   VkDevice device;
   VkPhysicalDevice physical_device;
 
-  ftk::ui::backend::vulkan_submission_pool* graphic_thread_pool;
+  ftk::ui::backend::vulkan_submission_pool<Executor>* graphic_thread_pool;
 
   typedef vulkan_image output_image_type;
 

@@ -22,10 +22,12 @@ namespace ftk { namespace ui { namespace backend {
 
 namespace pc = portable_concurrency;
       
+template <typename Executor>
 struct vulkan_submission_pool
 {
   VkDevice device;
   vulkan_queues* queues;
+  Executor executor;
 
   struct queue
   {
@@ -53,8 +55,8 @@ struct vulkan_submission_pool
       , max_queues (other.max_queues)
       , submission_mutex {}
       , submission_buffers (std::move(other.submission_buffers))
-      , submission_winner (false)
       , submission_promises (std::move(other.submission_promises))
+      , submission_winner (false)
       // , reserved_queues (std::move(other.reserved_queues))
       // , reserved_queues_in_use (std::move(other.reserved_queues_in_use))
     {}
@@ -79,10 +81,12 @@ struct vulkan_submission_pool
   // }
 
   vulkan_submission_pool (VkDevice device, struct vulkan_queues* queues
+                          , Executor executor
                           , unsigned int max_threads = 12
                           , unsigned int command_buffers_per_queue = 3)
     : device(device)//, family_index (family_index)
     , queues (queues)
+    , executor (std::move(executor))
     , threads_in_use_total (0u), command_buffers_per_queue(command_buffers_per_queue)
       //, thread_pool_count (threads)
   {
@@ -126,7 +130,7 @@ struct vulkan_submission_pool
       first->clear();
 
     unsigned int family_index = 0;
-    unsigned int buffer_index = 0;
+    // unsigned int buffer_index = 0;
     unsigned int buffer_local_index = 0;
     for (auto&& context : thread_contexts)
     {
@@ -142,11 +146,11 @@ struct vulkan_submission_pool
       allocInfo.commandPool = families[family_index].pool;
       allocInfo.commandBufferCount = 1;
 
-      auto r = from_result(vkAllocateCommandBuffers(device, &allocInfo, &thread_contexts[buffer_index].command_buffer));
+      auto r = from_result(vkAllocateCommandBuffers(device, &allocInfo, &/*thread_*/context/*s[buffer_index]*/.command_buffer));
       if (r != vulkan_error_code::success)
         throw -1;
 
-      ++buffer_index;
+      // ++buffer_index;
       ++buffer_local_index;
     }
   }
@@ -200,11 +204,20 @@ struct vulkan_submission_pool
   };
 
   template <typename F>
+  struct type_from_future;
+
+  template <typename T>
+  struct type_from_future<pc::future<T>>
+  {
+    typedef T type;
+  };
+  
+  template <typename F>
   typename result_type_t<F>::type run (F function)
   {
     auto id = allocate_thread_index ();
     return pc::async
-      (pc::inplace_executor
+      (executor
        , [function, id, this]
        {
          using fastdraw::output::vulkan::from_result;

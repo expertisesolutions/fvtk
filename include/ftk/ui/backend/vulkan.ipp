@@ -640,21 +640,21 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
         throw std::runtime_error("failed to create semaphores!");
     }
 
-    VkCommandPool mt_buffer_pool;
-    {
-      VkCommandPoolCreateInfo alloc_info {};
-      alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-      alloc_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-      alloc_info.queueFamilyIndex = /**graphicsFamilyIndex*/graphic_families[0];
+    // VkCommandPool mt_buffer_pool;
+    // {
+    //   VkCommandPoolCreateInfo alloc_info {};
+    //   alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    //   alloc_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    //   alloc_info.queueFamilyIndex = /**graphicsFamilyIndex*/graphic_families[0];
 
       
-    }
+    // }
 
     window w {{wb}, {}, {{{}/*, graphicsQueue, presentQueue*/, {}, {}
               , swapChainImageFormat, swapChainExtent, device, wb.physicalDevice
-              , renderPass, commandPool, &w.shader_loader}}, /**graphicsFamilyIndex*/graphic_families[0]
+              , renderPass, commandPool, &w.shader_loader}}, /**graphicsFamilyIndex*/static_cast<int>(graphic_families[0])
               , swapChainFramebuffers, swapChain
-              , executionFinishedFence, mt_buffer_pool, std::move(queues)};
+              , executionFinishedFence, {}/*mt_buffer_pool*/, std::move(queues)};
     w.shader_loader = {"../fastdraw/res/shader/vulkan", device};
     // for faster loading later
     w.shader_loader.load(fastdraw::output::vulkan::shader::image_vertex);

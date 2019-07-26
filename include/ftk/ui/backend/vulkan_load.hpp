@@ -93,8 +93,10 @@ bool operator>=(vulkan_buffer_token<U> lhs, vulkan_buffer_token<U> rhs)
   return !(lhs.token < rhs.token);
 }
 
+template <typename Executor>
 template <typename I>
-pc::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (std::filesystem::path path, I image_loader) const
+pc::future<typename vulkan_image_loader<Executor>::output_image_type> vulkan_image_loader<Executor>
+  ::load (std::filesystem::path path, I image_loader) const
 {
   using fastdraw::output::vulkan::from_result;
   using fastdraw::output::vulkan::vulkan_error_code;
@@ -103,8 +105,8 @@ pc::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (st
 
   auto image = image_loader.load (path);
 
-  auto src_size = height(image) * stride(image);
-  auto buffer_size = width (image) * height(image) * 4;
+  uint32_t src_size = height(image) * stride(image);
+  uint32_t buffer_size = width (image) * height(image) * 4;
 
   std::cout << "image " << width(image) << "x" << height(image) << " image  stride " << stride(image)
             << " format " << (int)format(image) << std::endl;
@@ -142,8 +144,9 @@ pc::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load (st
   return load (staging_pair.first, width(image), height(image));
 }
 
-pc::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load
-  (VkBuffer buffer, int32_t width, int32_t height) const
+template <typename Executor>
+pc::future<typename vulkan_image_loader<Executor>::output_image_type> vulkan_image_loader<Executor>
+  ::load (VkBuffer buffer, int32_t width, int32_t height) const
 {
   return
   graphic_thread_pool->run
@@ -268,8 +271,8 @@ pc::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load
 
        region.imageOffset = {0, 0, 0};
        region.imageExtent = {
-                             width,
-                             height,
+                             static_cast<uint32_t>(width),
+                             static_cast<uint32_t>(height),
                              1
                             };
        std::cout << __FILE__ << ":" << __LINE__ << std::endl;
@@ -319,8 +322,9 @@ pc::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load
      });
 }
 
-pc::future<vulkan_image_loader::output_image_type> vulkan_image_loader::load
-  (const void* buffer, int32_t width, int32_t height, uint32_t stride) const
+template <typename Executor>
+pc::future<typename vulkan_image_loader<Executor>::output_image_type> vulkan_image_loader<Executor>
+  ::load (const void* buffer, int32_t width, int32_t height, uint32_t stride) const
 {
   using fastdraw::output::vulkan::from_result;
   using fastdraw::output::vulkan::vulkan_error_code;
