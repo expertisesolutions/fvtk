@@ -355,6 +355,7 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
         = vulkan_queues_create_queue_create_info (wb.physicalDevice, wb.surface);
 
       VkPhysicalDeviceFeatures deviceFeatures = {};
+      deviceFeatures.fragmentStoresAndAtomics = true;
 
       // std::cout << "creating device" << std::endl;
       
