@@ -107,7 +107,8 @@ struct jpeg
 
   void write_to (char* buffer, std::size_t size) const
   {
-    while (cinfo.output_scanline != height())
+    typedef unsigned int uint;
+    while (cinfo.output_scanline != static_cast<uint>(height()))
     {
       ::jpeg_read_scanlines (&cinfo, (JSAMPARRAY)&buffer, 1);
       buffer += stride();

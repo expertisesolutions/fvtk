@@ -24,7 +24,8 @@ enum class shader
   fill_solid_color_bind_frag,
   triangle_bind_vertex,
   image_vertex,
-  image_frag
+  image_frag,
+  image_frag_mod
 };
 
 const char* name (shader s)
@@ -35,6 +36,7 @@ const char* name (shader s)
   case shader::triangle_bind_vertex:       return "triangle_bind.vert.spv";
   case shader::image_vertex:               return "image.vert.spv";
   case shader::image_frag:                 return "image.frag.spv";
+  case shader::image_frag_mod:                 return "image1.frag.spv";
   default:                                 throw std::runtime_error ("Shader not found");
   }
 }

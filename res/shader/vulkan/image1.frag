@@ -18,17 +18,17 @@ layout(set = 0, binding = 1) uniform sampler samp;
 // {
 //   uint zindex_chain[]; // indexed by zindex
 // };
-// struct image_info
-// {
-//   uint ii_zindex;
-//   uint ii_x, ii_y, ii_w, ii_h;
-//   uint alpha_compositing;
-//   uint found_alpha;
-// };
-// layout  (std430, binding = 4) buffer image_infos
-// {
-//   image_info ii[];
-// };
+struct image_info
+{
+  uint ii_zindex;
+  uint ii_x, ii_y, ii_w, ii_h;
+  uint alpha_compositing;
+  uint found_alpha;
+};
+layout  (std430, binding = 4) buffer image_infos
+{
+  image_info ii[];
+};
 
 // output
 layout(location = 0) out vec4 outColor;
@@ -43,10 +43,9 @@ void main() {
   // }
   vec4 color;
   // if (zindex == 1)
-  //   //color = texture(sampler2D(tex[2], samp), fragTexCoord);
-  //   color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+  //   color = texture(sampler2D(tex[zindex-1], samp), fragTexCoord);
   // else
-    color = texture(sampler2D(tex[zindex], samp), fragTexCoord);
+  color = texture(sampler2D(tex[zindex], samp), fragTexCoord);
   // if (color.a != 1.0f)
   //   ii[zindex].found_alpha = 1;
   outColor = color;

@@ -725,7 +725,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
 }
 
 template </*typename Point, */typename WindowingBase>
-vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& output/*, object::image<Point> const& image*/
+vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& output/*, object::image<Point> const& image*/, int imageindex = 0
                                   , VkPipelineRasterizationStateCreateInfo rasterizer
                                   = {VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO // sType
                                      , nullptr                                                  // pNext
@@ -892,18 +892,42 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
   // }
 
   {
+    VkDescriptorSetLayoutBinding textureLayoutBinding = {};
+    textureLayoutBinding.binding = 0;
+    textureLayoutBinding.descriptorCount = 10;
+    textureLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    textureLayoutBinding.pImmutableSamplers = nullptr;
+    textureLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
     VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
     samplerLayoutBinding.binding = 1;
     samplerLayoutBinding.descriptorCount = 1;
-    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
     samplerLayoutBinding.pImmutableSamplers = nullptr;
     samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    
+    // VkDescriptorSetLayoutBinding zindexPixelSboLayoutBinding = {};
+    // zindexPixelSboLayoutBinding.binding = 2;
+    // zindexPixelSboLayoutBinding.descriptorCount = 1;
+    // zindexPixelSboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    // zindexPixelSboLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    // std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
+    // VkDescriptorSetLayoutBinding zindexArraySboLayoutBinding = {};
+    // zindexArraySboLayoutBinding.binding = 2;
+    // zindexArraySboLayoutBinding.descriptorCount = 1;
+    // zindexArraySboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    // zindexArraySboLayoutBinding.pImmutableSamplers = nullptr;
+    // zindexArraySboLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    
+    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {textureLayoutBinding, samplerLayoutBinding
+                                                            /*, zindexPixelSboLayoutBinding
+                                                              , zindexArraySboLayoutBinding*/};
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = 1; //static_cast<uint32_t>(bindings.size());
-    layoutInfo.pBindings = /*bindings.data()*/&samplerLayoutBinding;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings = bindings.data();
+    // layoutInfo.bindingCount = 1; //static_cast<uint32_t>(bindings.size());
+    // layoutInfo.pBindings = /*bindings.data()*/&samplerLayoutBinding;
     layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
     
   CHRONO_COMPARE()
@@ -940,7 +964,7 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     // bufferInfo.offset = 0;
     // bufferInfo.range = sizeof(UniformBufferObject);
 
-    VkVertexInputBindingDescription bindingDescriptions[3] = {};
+    VkVertexInputBindingDescription bindingDescriptions[4] = {};
     bindingDescriptions[0].binding = 0;
     bindingDescriptions[0].stride = sizeof(float)*4;
     bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
@@ -952,8 +976,12 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     bindingDescriptions[2].binding = 2;
     bindingDescriptions[2].stride = 0;
     bindingDescriptions[2].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+
+    bindingDescriptions[3].binding = 3;
+    bindingDescriptions[3].stride = 0;
+    bindingDescriptions[3].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
     
-    VkVertexInputAttributeDescription attributeDescriptions[6] = {};
+    VkVertexInputAttributeDescription attributeDescriptions[7] = {};
 
     attributeDescriptions[0].binding = 0;
     attributeDescriptions[0].location = 0;
@@ -985,6 +1013,11 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     attributeDescriptions[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
     attributeDescriptions[5].offset = sizeof(float)*24 + sizeof(float)*12 + sizeof(float)*4*3;
 
+    attributeDescriptions[6].binding = 3;
+    attributeDescriptions[6].location = 6;
+    attributeDescriptions[6].format = VK_FORMAT_R32_UINT;
+    attributeDescriptions[6].offset = sizeof(float)*24 + sizeof(float)*12 + sizeof(float)*4*4;
+    
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexBindingDescriptionCount = sizeof(bindingDescriptions)/sizeof(bindingDescriptions[0]);
@@ -1070,7 +1103,10 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     CHRONO_COMPARE()
-    fragShaderStageInfo.module = output.shader_loader->load(shader::image_frag);
+    if (imageindex == 0)
+      fragShaderStageInfo.module = output.shader_loader->load(shader::image_frag);
+    else
+      fragShaderStageInfo.module = output.shader_loader->load(shader::image_frag_mod);
     CHRONO_COMPARE()
     fragShaderStageInfo.pName = "main";
 
@@ -1098,7 +1134,7 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     VkPipelineDepthStencilStateCreateInfo depthStencil = {};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     //depthStencil.depthTestEnable = VK_TRUE;
-    depthStencil.depthWriteEnable = VK_TRUE;
+    depthStencil.depthWriteEnable = VK_FALSE;
     depthStencil.depthCompareOp = VK_COMPARE_OP_GREATER;
     //depthStencil.depthBoundsTestEnable = VK_FALSE;
     //depthStencil.minDepthBounds = 0.0f; // Optional
@@ -1106,6 +1142,13 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     //depthStencil.stencilTestEnable = VK_FALSE;
     //depthStencil.front = {}; // Optional
     //depthStencil.back = {}; // Optional
+
+    VkDynamicState scissorDynamicState = VK_DYNAMIC_STATE_SCISSOR;
+    
+    VkPipelineDynamicStateCreateInfo dynamicState = {};
+    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.dynamicStateCount = 1;
+    dynamicState.pDynamicStates = &scissorDynamicState;
 
     VkGraphicsPipelineCreateInfo pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1118,7 +1161,7 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     pipelineInfo.pMultisampleState = &multisampling;
     pipelineInfo.pDepthStencilState = &depthStencil;
     pipelineInfo.pColorBlendState = &colorBlending;
-    pipelineInfo.pDynamicState = nullptr; // Optional
+    pipelineInfo.pDynamicState = &dynamicState; // Optional
     pipelineInfo.layout = pipelineLayout;
     pipelineInfo.renderPass = output.renderpass;
     pipelineInfo.subpass = 0;
