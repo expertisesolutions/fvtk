@@ -1,7 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-const int tex_max_size = 10;
+const int tex_max_size = 4096;
 
 // input from vertex shader
 layout(location = 0) in vec2 fragTexCoord;
@@ -9,7 +9,7 @@ layout(location = 1) in flat uint zindex;
 //layout(location = 2) in flat uint chain_array_size;
 // from descriptors
 layout(set = 0, binding = 0) uniform texture2D tex[tex_max_size];
-layout(set = 0, binding = 1) uniform sampler samp;
+layout(set = 1, binding = 0) uniform sampler samp;
 // layout(std430, binding = 2) buffer chain_pixel_buffer
 // {
 //   uint chain_index[];
@@ -25,9 +25,14 @@ struct image_info
   uint alpha_compositing;
   uint found_alpha;
 };
-layout  (std430, binding = 4) buffer image_infos
+layout  (std430, binding = 2, set = 0) buffer image_infos
 {
   image_info ii[];
+};
+
+layout  (std430, binding = 2, set = 1) buffer image_infos1
+{
+  vec4 somethingelse;
 };
 
 // output

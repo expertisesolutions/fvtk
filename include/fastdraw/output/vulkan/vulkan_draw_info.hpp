@@ -31,6 +31,7 @@ struct vulkan_draw_info
   std::vector<std::pair<std::size_t, VkBuffer>> vertex_buffers;
   std::optional<VkDescriptorSet> descriptorSet;
   VkDescriptorSetLayout descriptorSetLayout;
+  VkDescriptorSetLayout descriptorSetLayout2;
 
   vulkan_draw_info (VkPipeline pipeline, VkPipelineLayout pipeline_layout
                     , VkRenderPass render_pass, uint32_t vertexCount
@@ -38,13 +39,15 @@ struct vulkan_draw_info
                     , uint32_t firstInstance, std::vector<char> push_constants
                     , std::vector<std::pair<std::size_t, VkBuffer>> vertex_buffers
                     , std::optional<VkDescriptorSet> descriptorSet
-                    , VkDescriptorSetLayout descriptorSetLayout)
+                    , VkDescriptorSetLayout descriptorSetLayout
+                    , VkDescriptorSetLayout descriptorSetLayout2 = nullptr)
     : pipeline(pipeline), pipeline_layout (pipeline_layout)
     , render_pass (render_pass), vertexCount (vertexCount)
     , instanceCount (instanceCount), firstVertex (firstVertex)
     , firstInstance (firstInstance), push_constants(push_constants)
     , vertex_buffers (vertex_buffers), descriptorSet (descriptorSet)
     , descriptorSetLayout (descriptorSetLayout)
+    , descriptorSetLayout2 (descriptorSetLayout2)
   {}
 
   vulkan_draw_info ()
