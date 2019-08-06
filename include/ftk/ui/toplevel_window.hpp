@@ -15,6 +15,7 @@
 // #include <ftk/ui/backend/vulkan_storage_zindex_array.hpp>
 // #include <ftk/ui/backend/vulkan_storage_vector.hpp>
 #include <ftk/ui/backend/vulkan_command_buffer_cache.hpp>
+#include <ftk/ui/backend/descriptor_fixed_array.hpp>
 
 #include <functional>
 
@@ -119,13 +120,14 @@ struct toplevel_window
   toplevel_window (Backend& backend)
   //: backend_(&backend)
     : window (backend.create_window(1280, 1000))
+    , image_pipeline (fastdraw::output::vulkan::create_image_pipeline (window.voutput, 0))
+    , texture_descriptors (window.voutput.device, image_pipeline.descriptorSetLayout)
     , vbuffer (window.voutput.device, window.voutput.physical_device)
     // , storage_zindex (window.voutput.device, window.voutput.physical_device
     //                  , window.voutput.swapChainExtent)
     // , zindex_array (window.voutput.device, window.voutput.physical_device)
   {
     //backend_->exposure_signal.connect (std::bind(&toplevel_window<Backend>::exposure, this));
-    
   }
 
   toplevel_window (toplevel_window&& other) = delete; // for now
@@ -163,6 +165,11 @@ struct toplevel_window
     it->zindex = /*zinfo.*/zindex;
     std::cout << "it->zindex " << it->zindex << std::endl;
 
+    VkDescriptorImageInfo imageInfo = {};
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageInfo.imageView = image.image_view;
+    texture_descriptors.push_back (imageInfo);
+    
     std::vector<VkImageView> image_views {background.image_view};
     for (auto&& image : images)
     {
@@ -301,11 +308,17 @@ struct toplevel_window
     image->must_draw[0] = true;
     image->must_draw[1] = true;
     image->image_view = view;
-    std::vector<VkImageView> image_views {background.image_view};
-    for (auto&& image : images)
-    {
-      image_views.push_back (image.image_view);
-    }
+
+    VkDescriptorImageInfo imageInfo = {};
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageInfo.imageView = view;
+    texture_descriptors.push_back (imageInfo);
+
+    // std::vector<VkImageView> image_views {background.image_view};
+    // for (auto&& image : images)
+    // {
+    //   image_views.push_back (image.image_view);
+    // }
     image->cache = toplevel_window_command_buffer_cache
         {/*{create_command_buffer
           (window.voutput.command_pool
@@ -429,6 +442,10 @@ struct toplevel_window
     auto zindex = /*zindex_array.get_zindex_info (0);*/create_new_zindex();
     background.zindex = /*zinfo.*/zindex;
     std::cout << "background zindex " << background.zindex << std::endl;
+    VkDescriptorImageInfo imageInfo = {};
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageInfo.imageView = background.image_view;
+    texture_descriptors.push_back (imageInfo);
     
     unsigned int offset
       = vbuffer.push_back (vertex_info
@@ -479,19 +496,20 @@ struct toplevel_window
     uint32_t has_alpha;
     uint32_t found_alpha;
   };
-  
+
+  //VkDescriptorPool texture_descriptor_pool;
   // Backend* backend_;
   // should be a fastdraw something
   std::list<toplevel_window_image> images;
   mutable typename Backend::window window;
+  fastdraw::output::vulkan::vulkan_draw_info image_pipeline;
+  vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4096> texture_descriptors;
   std::vector<toplevel_framebuffer_region> framebuffers_damaged_regions[2];
   vertex_buffer <vertex_info> vbuffer;
   // struct storage_zindex<uint32_t> storage_zindex;
   // struct storage_zindex_array<uint32_t> zindex_array;
   //std::vector<toplevel_window_command_buffer_cache> buffer_cache;
   std::mutex image_mutex; // for images vector and command_buffers cache
-  fastdraw::output::vulkan::vulkan_draw_info const image_pipeline
-    = fastdraw::output::vulkan::create_image_pipeline (window.voutput);
   VkSampler const sampler = detail::render_thread_create_sampler (window.voutput.device);
   VkRenderPass const renderPass = create_compatible_render_pass();
 };
