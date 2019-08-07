@@ -93,24 +93,27 @@ struct descriptor_fixed_array
     write_set.dstBinding = 0;
     write_set.descriptorType = DescriptorType;
     write_set.dstArrayElement = current_size;
-    descriptor_type_traits::update_info (write_set, &types[current_size]);
-    write_set.descriptorCount = current_size ? 1 : Size - current_size;
     std::cout << "count " << write_set.descriptorCount << " dstArrayElement "
               << write_set.dstArrayElement << std::endl;
     if (current_size == 0) // update all
     {
+      std::array <info_type, Size> types;
       for (auto&& t : types)
         t = type;
+      write_set.descriptorCount = Size;
+      descriptor_type_traits::update_info (write_set, &types[0]);
     }
     else
-      types[current_size] = type;
+    {
+      write_set.descriptorCount = 1;
+      descriptor_type_traits::update_info (write_set, &type);
+    }
     std::cout << "writing descriptorset" << std::endl;
     vkUpdateDescriptorSets (device, 1, &write_set, 0, nullptr);
     std::cout << "wrote descriptorset" << std::endl;
     ++current_size;
   }
 
-  std::array <info_type, Size> types;
   VkDevice device;
   VkDescriptorPool descriptor_pool;
   VkDescriptorSet set;
