@@ -294,7 +294,12 @@ struct vulkan_queues
     lock_queue_base(vulkan_queues& queues, unsigned int family)
       : queue_index (0)
     {
-      search_specific_family (queues, family);
+    again:
+      if (!search_specific_family (queues, family))
+      {
+        if (!search_specific_family (queues, family))
+          goto again;
+      }
     }
 
     queue get_queue () const
