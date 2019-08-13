@@ -413,10 +413,10 @@ struct toplevel_window
   std::list<toplevel_window_component> components;
   backend_window_type window;
   fastdraw::output::vulkan::vulkan_draw_info image_pipeline;
-  vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4096> texture_descriptors;
-  vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLER, 1> sampler_descriptors;
+  backend::vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4096> texture_descriptors;
+  backend::vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLER, 1> sampler_descriptors;
   std::vector<toplevel_framebuffer_region> framebuffers_damaged_regions[2];
-  vulkan::buffer_allocator buffer_allocator;
+  backend::vulkan::buffer_allocator buffer_allocator;
   VkBuffer component_ssbo_buffer;
   VkBuffer indirect_draw_buffer;
   //std::mutex image_mutex; // for images vector and command_buffers cache

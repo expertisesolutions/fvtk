@@ -41,20 +41,20 @@ int main(int argc, char* argv[])
 
   std::cout << "resource path " << res_path << std::endl;
 
-  typedef ftk::ui::backend::vulkan<ftk::ui::backend::uv::uv_loop, ftk::ui::backend::xlib_surface<ftk::ui::backend::uv::uv_loop>> backend_type;
+  typedef ftk::ui::backend::vulkan::vulkan<ftk::ui::backend::uv::uv_loop, ftk::ui::backend::vulkan::xlib_surface<ftk::ui::backend::uv::uv_loop>> backend_type;
   backend_type backend({&loop});
 
   auto vulkan_window = backend.create_window(1280, 1000, res_path);
   
   portable_concurrency::static_thread_pool thread_pool {8};
   typedef pc::static_thread_pool::executor_type executor_type;
-  ftk::ui::backend::vulkan_submission_pool<executor_type>
+  ftk::ui::backend::vulkan::submission_pool<executor_type>
     vulkan_submission_pool (vulkan_window.voutput.device
                             , &vulkan_window.queues
                             , thread_pool.executor()
                             , 4 /* thread count */);
 
-  auto empty_image = ftk::ui::backend::load_empty_image_view
+  auto empty_image = ftk::ui::backend::vulkan::load_empty_image_view
     (vulkan_window.voutput.device, vulkan_window.voutput.physical_device
      , vulkan_submission_pool).get();
   
@@ -63,7 +63,7 @@ int main(int argc, char* argv[])
   std::cout << "w width " << w.window.voutput.swapChainExtent.width << std::endl;
 
   fastdraw::image_loader::extension_loader fs_loader;
-  ftk::ui::backend::vulkan_image_loader<executor_type> vulkan_loader
+  ftk::ui::backend::vulkan::image_loader<executor_type> vulkan_loader
     {vulkan_window.voutput.device, vulkan_window.voutput.physical_device
      , &vulkan_submission_pool};
 

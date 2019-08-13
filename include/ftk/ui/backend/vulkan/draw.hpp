@@ -82,7 +82,7 @@ void fill_buffer (VkSemaphore semaphore, toplevel_window<Backend>& toplevel)
   submitInfo.pCommandBuffers = &command_buffer;
 
   {
-    ftk::ui::backend::vulkan_queues::lock_graphic_queue lock_queue(toplevel.window.queues);
+    ftk::ui::backend::vulkan::queues::lock_graphic_queue lock_queue(toplevel.window.queues);
     r = from_result(vkQueueSubmit(lock_queue.get_queue().vkqueue, 1, &submitInfo, initialization_fence));
   }
   if (r != vulkan_error_code::success)
@@ -141,7 +141,7 @@ record (toplevel_window<Backend>& toplevel
   auto static const vkCmdPushDescriptorSetKHR
     = reinterpret_cast<PFN_vkCmdPushDescriptorSetKHR>(vkCmdPushDescriptorSetKHR_ptr);
   assert (vkCmdPushDescriptorSetKHR != nullptr);
-  auto const indirect_pipeline = ftk::ui::vulkan
+  auto const indirect_pipeline = ftk::ui::backend::vulkan
     ::create_indirect_draw_buffer_filler_pipeline (toplevel.window.voutput);
 
   using fastdraw::output::vulkan::from_result;
@@ -384,7 +384,7 @@ void draw (toplevel_window<Backend>& toplevel)
 
          auto queue_begin = std::chrono::high_resolution_clock::now();
          {
-           ftk::ui::backend::vulkan_queues::lock_graphic_queue lock_queue(toplevel.window.queues);
+           queues::lock_graphic_queue lock_queue(toplevel.window.queues);
 
            auto now = std::chrono::high_resolution_clock::now();
            auto diff = now - queue_begin;
@@ -420,7 +420,7 @@ void draw (toplevel_window<Backend>& toplevel)
            presentInfo.pResults = nullptr; // Optional
 
            {
-             ftk::ui::backend::vulkan_queues::lock_presentation_queue lock_queue(toplevel.window.queues);
+             queues::lock_presentation_queue lock_queue(toplevel.window.queues);
          
              using fastdraw::output::vulkan::from_result;
              using fastdraw::output::vulkan::vulkan_error_code;

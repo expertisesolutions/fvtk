@@ -35,19 +35,19 @@ int main(int argc, char* argv[])
 
   std::cout << "resource path " << res_path << std::endl;
 
-  typedef ftk::ui::backend::vulkan<ftk::ui::backend::uv::uv_loop, ftk::ui::backend::xlib_surface<ftk::ui::backend::uv::uv_loop>> backend_type;
+  typedef ftk::ui::backend::vulkan::vulkan<ftk::ui::backend::uv::uv_loop, ftk::ui::backend::vulkan::xlib_surface<ftk::ui::backend::uv::uv_loop>> backend_type;
   backend_type backend({&loop});
 
   auto vulkan_window = backend.create_window(1280, 1000, res_path);
   
   typedef pc::inplace_executor_t executor_type;
-  ftk::ui::backend::vulkan_submission_pool<executor_type>
+  ftk::ui::backend::vulkan::submission_pool<executor_type>
     vulkan_submission_pool (vulkan_window.voutput.device
                             , &vulkan_window.queues
                             , pc::inplace_executor
                             , 1 /* thread count */);
 
-  auto empty_image = ftk::ui::backend::load_empty_image_view
+  auto empty_image = ftk::ui::backend::vulkan::load_empty_image_view
     (vulkan_window.voutput.device, vulkan_window.voutput.physical_device
      , vulkan_submission_pool).get();
   

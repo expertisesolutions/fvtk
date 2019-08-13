@@ -18,7 +18,7 @@
 #include <ftk/ui/backend/khr_display.hpp>
 #include <ftk/ui/backend/xlib_surface.hpp>
 
-namespace ftk { namespace ui { namespace backend {
+namespace ftk { namespace ui { namespace backend { namespace vulkan {
 
 std::vector<unsigned int> get_graphics_family (VkPhysicalDevice physical_device)
 {
@@ -349,13 +349,13 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
 
     std::cout << "graphic families: " << graphic_families.size() << " presentation families " << presentation_families.size()
               << " highest priority " << presentation_families[0] << std::endl;
-    vulkan_queues queues;
+    struct queues queues;
     {
       std::vector<VkDeviceQueueCreateInfo> queue_info;
       std::unique_ptr<float[]> queue_priorities;
 
       std::tie (queue_info, queue_priorities)
-        = vulkan_queues_create_queue_create_info (wb.physicalDevice, wb.surface);
+        = backend::vulkan::queues_create_queue_create_info (wb.physicalDevice, wb.surface);
 
       VkPhysicalDeviceFeatures deviceFeatures = {};
       deviceFeatures.fragmentStoresAndAtomics = true;
@@ -388,8 +388,8 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
 
       std::cout << "created device" << std::endl;
 
-      auto separated_queues = vulkan_queues_create_queues (device, wb.physicalDevice, wb.surface);
-      queues = vulkan_queues {separated_queues[0], separated_queues[1], separated_queues[2]};
+      auto separated_queues = backend::vulkan::queues_create_queues (device, wb.physicalDevice, wb.surface);
+      queues = backend::vulkan::queues {separated_queues[0], separated_queues[1], separated_queues[2]};
 
       VkSurfaceCapabilitiesKHR capabilities;
       vkGetPhysicalDeviceSurfaceCapabilitiesKHR(wb.physicalDevice, wb.surface, &capabilities);
@@ -434,7 +434,7 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
       {
         std::cout << "we have a concurrent mode swapchain" << std::endl;
         std::vector<uint32_t> indices;
-        auto families = vulkan_queues_separate_queue_families (device, wb.physicalDevice, wb.surface);
+        auto families = backend::vulkan::queues_separate_queue_families (device, wb.physicalDevice, wb.surface);
         for (auto&& index : families[0])
           indices.push_back(index.index);
         for (auto&& index : families[1])
@@ -697,6 +697,6 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
     return w;
 }
       
-} } }
+} } } }
 
 #endif

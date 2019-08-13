@@ -329,7 +329,7 @@ template <typename Executor>
 pc::future<typename image_loader<Executor>::output_image_type> image_loader<Executor>
   ::load (VkBuffer buffer, int32_t width, int32_t height) const
 {
-  return backend::vulkan_async_load (device, physical_device, *graphic_thread_pool, buffer, width, height);
+  return vulkan_async_load (device, physical_device, *graphic_thread_pool, buffer, width, height);
 }
 
 template <typename Executor>

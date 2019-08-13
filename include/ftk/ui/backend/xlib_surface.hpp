@@ -19,7 +19,7 @@
 #include <vulkan/vulkan_xlib.h>
 #include <vulkan/vulkan_core.h>
 
-namespace ftk { namespace ui { namespace backend {
+namespace ftk { namespace ui { namespace backend { namespace vulkan {
 
 template <typename Loop>
 struct xlib_surface : x11_base<Loop>
@@ -38,6 +38,6 @@ struct xlib_surface : x11_base<Loop>
 };
 
       
-} } }
-      
+} } } }
+
 #endif
