@@ -335,7 +335,7 @@ create_indirect_draw_buffer_filler_pipeline
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
     CHRONO_COMPARE()
-    vertShaderStageInfo.module = output.shader_loader->load(fastdraw::output::vulkan::shader::indirect_draw_vertex);
+    vertShaderStageInfo.module = output.shader_loader->load(fastdraw::output::vulkan::shader::fill_indirect_draw_vertex);
     CHRONO_COMPARE()
     vertShaderStageInfo.pName = "main";
     
@@ -343,7 +343,7 @@ create_indirect_draw_buffer_filler_pipeline
     fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     CHRONO_COMPARE()
-    fragShaderStageInfo.module = output.shader_loader->load(fastdraw::output::vulkan::shader::indirect_draw_frag);
+    fragShaderStageInfo.module = output.shader_loader->load(fastdraw::output::vulkan::shader::fill_indirect_draw_frag);
     CHRONO_COMPARE()
     fragShaderStageInfo.pName = "main";
 
