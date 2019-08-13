@@ -13,7 +13,7 @@
 #include <fastdraw/output/vulkan/vulkan_output.hpp>
 #include <fastdraw/output/vulkan/mt_buffer_pool.hpp>
 
-#include <ftk/ui/backend/x11_base_fwd.hpp>
+#include <ftk/ui/backend/x11_base_backend_fwd.hpp>
 #include <ftk/ui/backend/uv/uv_loop_fwd.hpp>
 #include <ftk/ui/backend/vulkan/draw.hpp>
 #include <ftk/ui/backend/vulkan/queues.hpp>
@@ -26,12 +26,12 @@
 #include <iostream>
 #include <mutex>
 
-namespace ftk { namespace ui { namespace backend { namespace vulkan {
+namespace ftk { namespace ui { namespace backend {
 
 template <typename Loop, typename WindowingBase>
-struct vulkan : WindowingBase
+struct vulkan_backend : WindowingBase
 {
-  vulkan (Loop loop) : WindowingBase(loop)
+  vulkan_backend (Loop loop) : WindowingBase(loop)
   {
   }
 
@@ -49,14 +49,14 @@ struct vulkan : WindowingBase
     VkSwapchainKHR swapChain;
     VkFence executionFinished;
     fastdraw::output::vulkan::mt_buffer_pool command_buffer_pool;
-    struct queues queues;
+    vulkan::queues queues;
 
     window (window_base base, fastdraw::output::vulkan::shader_loader shader_loader
             , fastdraw::output::vulkan::vulkan_output<int, point_type, color_type> voutput
             , int graphicsFamilyIndex, std::vector<VkFramebuffer> swapChainFramebuffers
             , VkSwapchainKHR swapChain, VkFence executionFinished
             , VkCommandPool command_pool
-            , struct queues queues)
+            , vulkan::queues queues)
       : window_base (base), shader_loader (shader_loader)
       , voutput (voutput)//, graphicsFamilyIndex (graphicsFamilyIndex)
       , swapChainFramebuffers (swapChainFramebuffers)
@@ -80,6 +80,6 @@ struct vulkan : WindowingBase
   window create_window (int width, int height, std::filesystem::path resource_path) const;
 };
 
-} } } }
+} } }
 
 #endif

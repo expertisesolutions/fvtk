@@ -7,21 +7,27 @@
 // See http://www.boost.org/libs/foreach for documentation
 //
 
-#ifndef FTK_FTK_UI_BACKEND_KHR_DISPLAY_HPP
-#define FTK_FTK_UI_BACKEND_KHR_DISPLAY_HPP
+#ifndef FTK_FTK_UI_BACKEND_XLIB_SURFACE_HPP
+#define FTK_FTK_UI_BACKEND_XLIB_SURFACE_HPP
+
+#include <ftk/ui/backend/x11_base_backend.hpp>
+
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
 
 #include <vulkan/vulkan.h>
-//#include <vulkan/vulkan_xlib.h>
+#include <vulkan/vulkan_xlib.h>
 #include <vulkan/vulkan_core.h>
 
-namespace ftk { namespace ui { namespace backend { namespace vulkan {
+namespace ftk { namespace ui { namespace backend {
 
-struct khr_display
+template <typename Loop>
+struct xlib_surface_backend : x11_base_backend<Loop>
 {
-  template <typename Loop>
-  khr_display (Loop const&) {}
+  using base = x11_base_backend<Loop>;
+  xlib_surface_backend (Loop const& loop) : base(loop) {}
   
-  struct window
+  struct window : x11_base_backend<Loop>::window
   {
     VkInstance instance;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -31,6 +37,7 @@ struct khr_display
   window create_window(int width, int height, std::filesystem::path resource_path) const;
 };
 
-} } } }
       
+} } }
+
 #endif

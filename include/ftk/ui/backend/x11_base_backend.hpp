@@ -10,7 +10,7 @@
 #ifndef FTK_FTK_UI_BACKEND_X11_BASE_HPP
 #define FTK_FTK_UI_BACKEND_X11_BASE_HPP
 
-#include <ftk/ui/backend/x11_base.hpp>
+#include <ftk/ui/backend/x11_base_backend.hpp>
 
 #include <system_error>
 #include <functional>
@@ -45,7 +45,7 @@ std::error_code make_error_code(xlib_error_code ec)
 }
 
 template <typename Loop>
-struct x11_base
+struct x11_base_backend
 {
   Loop loop;
   Display* display;
@@ -54,7 +54,7 @@ struct x11_base
   typename Loop::fd display_fd;
   mutable std::vector<Window> windows;
 
-  using self_type = x11_base<Loop>;
+  using self_type = x11_base_backend<Loop>;
 
   boost::signals2::signal<void ()> exposure_signal;
   boost::signals2::signal<void (XKeyEvent)> key_signal;
@@ -75,7 +75,7 @@ struct x11_base
     }
   };
 
-  x11_base(Loop loop)
+  x11_base_backend (Loop loop)
     : loop(loop), display(nullptr)
   {
     connect();

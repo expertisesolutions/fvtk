@@ -10,7 +10,7 @@
 #ifndef FTK_FTK_UI_BACKEND_VULKAN_DRAW_HPP
 #define FTK_FTK_UI_BACKEND_VULKAN_DRAW_HPP
 
-#include <ftk/ui/backend/vulkan_fwd.hpp>
+#include <ftk/ui/backend/vulkan_backend_fwd.hpp>
 #include <ftk/ui/backend/vulkan/indirect_draw.hpp>
 #include <ftk/ui/toplevel_window.hpp>
 #include <ftk/ui/ui_fwd.hpp>

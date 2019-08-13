@@ -15,10 +15,10 @@
 #include <vulkan/vulkan_core.h>
 
 #include <ftk/ui/backend/vulkan/queues.hpp>
-#include <ftk/ui/backend/khr_display.hpp>
-#include <ftk/ui/backend/xlib_surface.hpp>
+#include <ftk/ui/backend/khr_display_backend.hpp>
+#include <ftk/ui/backend/xlib_surface_backend.hpp>
 
-namespace ftk { namespace ui { namespace backend { namespace vulkan {
+namespace ftk { namespace ui { namespace backend {
 
 std::vector<unsigned int> get_graphics_family (VkPhysicalDevice physical_device)
 {
@@ -74,7 +74,7 @@ std::vector<unsigned int> get_presentation_family (VkPhysicalDevice physical_dev
 }
 
 template <typename Loop>
-typename xlib_surface<Loop>::window xlib_surface<Loop>::create_window
+typename xlib_surface_backend<Loop>::window xlib_surface_backend<Loop>::create_window
    (int width, int height, std::filesystem::path resource_path) const
 {
     using fastdraw::output::vulkan::from_result;
@@ -182,7 +182,7 @@ typename xlib_surface<Loop>::window xlib_surface<Loop>::create_window
     return w;
 }
       
-khr_display::window khr_display::create_window(int width, int height
+khr_display_backend::window khr_display_backend::create_window(int width, int height
   , std::filesystem::path resource_path) const
 {
     using fastdraw::output::vulkan::from_result;
@@ -326,7 +326,7 @@ khr_display::window khr_display::create_window(int width, int height
   }
       
 template <typename Loop, typename WindowingBase>
-typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create_window (int width, int height
+typename vulkan_backend<Loop, WindowingBase>::window vulkan_backend<Loop, WindowingBase>::create_window (int width, int height
   , std::filesystem::path resource_path) const
 {
     using fastdraw::output::vulkan::from_result;
@@ -349,7 +349,7 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
 
     std::cout << "graphic families: " << graphic_families.size() << " presentation families " << presentation_families.size()
               << " highest priority " << presentation_families[0] << std::endl;
-    struct queues queues;
+    vulkan::queues queues;
     {
       std::vector<VkDeviceQueueCreateInfo> queue_info;
       std::unique_ptr<float[]> queue_priorities;
@@ -697,6 +697,6 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
     return w;
 }
       
-} } } }
+} } }
 
 #endif

@@ -11,12 +11,12 @@
 #include <ftk/ui/text_box.hpp>
 #include <uv.h>
 
-#include <ftk/ui/backend/vulkan.hpp>
-#include <ftk/ui/backend/x11_base.hpp>
+#include <ftk/ui/backend/vulkan_backend.hpp>
+#include <ftk/ui/backend/x11_base_backend.hpp>
 #include <ftk/ui/backend/uv/uv_loop.hpp>
 #include <ftk/ui/backend/uv/timer.hpp>
 #include <ftk/ui/backend/vulkan/draw.hpp>
-#include <ftk/ui/backend/vulkan.ipp>
+#include <ftk/ui/backend/vulkan_backend.ipp>
 #include <ftk/ui/backend/vulkan/image.hpp>
 
 #include <fastdraw/image_loader/extension_loader.hpp>
@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
 
   std::cout << "resource path " << res_path << std::endl;
 
-  typedef ftk::ui::backend::vulkan::vulkan<ftk::ui::backend::uv::uv_loop, ftk::ui::backend::vulkan::xlib_surface<ftk::ui::backend::uv::uv_loop>> backend_type;
+  typedef ftk::ui::backend::vulkan_backend<ftk::ui::backend::uv::uv_loop, ftk::ui::backend::xlib_surface_backend<ftk::ui::backend::uv::uv_loop>> backend_type;
   backend_type backend({&loop});
 
   auto vulkan_window = backend.create_window(1280, 1000, res_path);
@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
   auto image = vulkan_loader.load (image_path, fs_loader);
     
   w.append_component ({10, 10, 200, 200, ftk::ui::image_component{image.get().image_view}});
-  draw (w);
+  ftk::ui::backend::vulkan::draw (w);
   
   ftk::ui::backend::uv::timer_wait
     (backend.loop

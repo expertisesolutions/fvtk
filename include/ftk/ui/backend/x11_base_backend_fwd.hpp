@@ -7,17 +7,14 @@
 // See http://www.boost.org/libs/foreach for documentation
 //
 
-#ifndef FTK_FTK_UI_BACKEND_VULKAN_FWD_HPP
-#define FTK_FTK_UI_BACKEND_VULKAN_FWD_HPP
+#ifndef FTK_FTK_UI_BACKEND_X11_BASE_FWD_HPP
+#define FTK_FTK_UI_BACKEND_X11_BASE_FWD_HPP
 
-#include <ftk/ui/backend/x11_base_fwd.hpp>
-#include <ftk/ui/backend/uv/uv_loop_fwd.hpp>
+namespace ftk { namespace ui { namespace backend {
 
-namespace ftk { namespace ui { namespace backend { namespace vulkan {
+template <typename Loop>
+struct x11_base_backend;
 
-template <typename Loop = uv::uv_loop, typename WindowingBase = x11_base<Loop> >
-struct vulkan;
-    
-} } } }
+} } }
 
 #endif
