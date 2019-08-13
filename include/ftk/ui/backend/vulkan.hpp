@@ -14,7 +14,7 @@
 #include <fastdraw/output/vulkan/mt_buffer_pool.hpp>
 
 #include <ftk/ui/backend/x11_base_fwd.hpp>
-#include <ftk/ui/backend/uv_fwd.hpp>
+#include <ftk/ui/backend/uv/uv_loop_fwd.hpp>
 #include <ftk/ui/backend/vulkan_draw.hpp>
 #include <ftk/ui/backend/vulkan_queues.hpp>
 

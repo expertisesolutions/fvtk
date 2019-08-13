@@ -10,10 +10,10 @@
 #ifndef FTK_FTK_UI_BACKEND_LIBUV_FWD_HPP
 #define FTK_FTK_UI_BACKEND_LIBUV_FWD_HPP
 
-namespace ftk { namespace ui { namespace backend {
+namespace ftk { namespace ui { namespace backend { namespace uv {
 
-struct uv;
+struct uv_loop;
 
-} } }
+} } } }
 
 #endif

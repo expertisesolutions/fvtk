@@ -11,11 +11,11 @@
 #define FTK_FTK_UI_BACKEND_VULKAN_FWD_HPP
 
 #include <ftk/ui/backend/x11_base_fwd.hpp>
-#include <ftk/ui/backend/uv_fwd.hpp>
+#include <ftk/ui/backend/uv/uv_loop_fwd.hpp>
 
 namespace ftk { namespace ui { namespace backend {
 
-template <typename Loop = uv, typename WindowingBase = x11_base<Loop> >
+template <typename Loop = uv::uv_loop, typename WindowingBase = x11_base<Loop> >
 struct vulkan;
     
 } } }

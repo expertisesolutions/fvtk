@@ -13,8 +13,8 @@
 
 #include <ftk/ui/backend/vulkan.hpp>
 #include <ftk/ui/backend/x11_base.hpp>
-#include <ftk/ui/backend/uv.hpp>
-
+#include <ftk/ui/backend/uv/uv_loop.hpp>
+#include <ftk/ui/backend/uv/timer.hpp>
 #include <ftk/ui/backend/vulkan_draw.hpp>
 #include <ftk/ui/backend/vulkan.ipp>
 
@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
 
   std::cout << "resource path " << res_path << std::endl;
 
-  typedef ftk::ui::backend::vulkan<ftk::ui::backend::uv, ftk::ui::backend::xlib_surface<ftk::ui::backend::uv>> backend_type;
+  typedef ftk::ui::backend::vulkan<ftk::ui::backend::uv::uv_loop, ftk::ui::backend::xlib_surface<ftk::ui::backend::uv::uv_loop>> backend_type;
   backend_type backend({&loop});
 
   auto vulkan_window = backend.create_window(1280, 1000, res_path);
@@ -55,8 +55,16 @@ int main(int argc, char* argv[])
 
   std::cout << "w width " << w.window.voutput.swapChainExtent.width << std::endl;
   
-  w.append_component ({10, 10, 200, 200, ftk::ui::rectangle_component{{255, 0, 0, 255}}});
+  w.append_component ({10, 10, 200, 200, ftk::ui::rectangle_component{{0, 255, 0, 255}}});
   draw (w);
+
+  ftk::ui::backend::uv::timer_wait
+    (backend.loop
+     , 1000
+     , [&] (uv_timer_t* timer)
+       {
+         uv_stop (&loop);
+       });  
   
   uv_run(&loop, UV_RUN_DEFAULT);
 
