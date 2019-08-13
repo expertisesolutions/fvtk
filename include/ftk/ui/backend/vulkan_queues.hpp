@@ -12,6 +12,8 @@
 
 #include <variant>
 #include <atomic>
+#include <memory>
+#include <algorithm>
 
 namespace ftk { namespace ui { namespace backend {
 
