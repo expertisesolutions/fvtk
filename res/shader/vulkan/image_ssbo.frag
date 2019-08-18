@@ -7,6 +7,7 @@ const int tex_max_size = 4096;
 layout(location = 0) in vec2 fragTexCoord;
 //layout(location = 1) in flat uint zindex;
 layout(location = 2) in flat uint InstanceID;
+layout(location = 3) in flat vec4 vertexColor;
 //layout(location = 2) in flat uint chain_array_size;
 // from descriptors
 layout(set = 0, binding = 0) uniform texture2D tex[tex_max_size];
@@ -63,24 +64,23 @@ in vec4 gl_FragCoord;
 void main() {
   //uint zindex = fg_zindex[fragment_data_length - InstanceID - 1];
   uint zindex = fg_zindex[InstanceID];
-  vec4 color;
 
-  color = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+  // outColor = vertexColor;
+  // return;
+  vec4 color = vec4(0.0f, 0.0f, 0.0f, 0.0f);
   // if (zindex == 0)
   //   color = vec4(0.25f, 0.0f, 0.0f, 0.5f);
   //   //color = texture(sampler2D(tex[zindex], samp), fragTexCoord);
   // else
-    if (zindex == 1)
-    //color = texture(sampler2D(tex[zindex], samp), fragTexCoord);
-    color = vec4(0.0f, 0.25f, 0.0f, 0.5f);
+  if (zindex == 1)
+    color = vec4(0.0f, 0.25f, 0.0f, 1.0f);
   else if (zindex == 2)
-    //color = texture(sampler2D(tex[zindex], samp), fragTexCoord);
-    color = vec4(0.0f, 0.0f, 0.25f, 0.5f);
+    color = vec4(0.0f, 0.0f, 0.25f, 1.0f);
 
-  //color = texture(sampler2D(tex[zindex], samp), fragTexCoord);
+  color = texture(sampler2D(tex[zindex], samp), fragTexCoord);
 
-  if (ii[zindex].ii_zindex != zindex)
-    color = vec4(0.0f, 0.0, 1.0f, 0.5f);
+  // if (ii[zindex].ii_zindex != zindex)
+  //   color = vec4(0.0f, 0.0, 1.0f, 0.5f);
   // else if (zindex == 0)
   //   color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
   // else
@@ -94,8 +94,8 @@ void main() {
   // else
   //   color = texture(sampler2D(tex[zindex], samp), fragTexCoord);
 
-  if (InstanceID != 0)
-    color += vec4(0.0f, 0.5f, 0.0f, 0.5f);
+  // if (InstanceID != 0)
+  //   color += vec4(0.0f, 0.5f, 0.0f, 0.5f);
   
   // if (color.a != 1.0f)
   //   atomicExchange(ii[zindex].found_alpha, 1);

@@ -68,28 +68,26 @@ in vec4 gl_FragCoord;
 
 void main()
 {
-  if (gl_SampleMaskIn[0] == 0)
-    return;
-
+  // in bool gl_HelperInvocation
+  if (!gl_HelperInvocation)
+  {
   uint error = 0;
   for (uint i = image_length; i != 0; --i)
   {
-    uint j = i-1;
-    uint tries = 0;
-    if (atomicCompSwap(buffers_to_draw[j], 0, 0) == 0)
+    uint value = i-1;
+    if (buffers_to_draw[value] == 0)
     {
       uint unorm_x = uint(floor(gl_FragCoord.x));
       uint unorm_y = uint(floor(gl_FragCoord.y));
-      if (unorm_x >= ii[j].ii_x && unorm_x < ii[j].ii_x + ii[j].ii_w
-          && unorm_y >= ii[j].ii_y && unorm_y < ii[j].ii_y + ii[j].ii_h)
+      if (unorm_x >= ii[value].ii_x && unorm_x < ii[value].ii_x + ii[value].ii_w
+          && unorm_y >= ii[value].ii_y && unorm_y < ii[value].ii_y + ii[value].ii_h)
       {
         // found correct image
-        if (atomicExchange(buffers_to_draw[j], 1) == 0)
+        if (atomicExchange(buffers_to_draw[value], 1) == 0)
         {
           atomicAdd (instance_count, 1);
 
           uint old_value = 0xFFFFFFFF;
-          uint value = j;
           uint cur_index = 0;
           while (true)
           {
@@ -103,22 +101,23 @@ void main()
             }
 
             // theoretically after sequence
-            uint old_index = 0xFFFFFFFF;
-            if ((old_index = atomicCompSwap (fg_zindex[cur_index], 0xFFFFFFFF, value)) == 0xFFFFFFFF)
+            if (atomicCompSwap (fg_zindex[cur_index], 0xFFFFFFFF, value) == 0xFFFFFFFF)
             {
               atomicAdd (fragment_data_length, 1);
+              fg_zindex[cur_index] = value;
               break;
             }
           }
 
-          vec2 fragTexCoord = vec2 (floor(gl_FragCoord.x - ii[j].ii_x)/(ii[j].ii_w-1)
-                                    , floor(gl_FragCoord.y - ii[j].ii_y)/(ii[j].ii_h-1));
-          vec4 color = texture(sampler2D(tex[j], samp), fragTexCoord);
+          vec2 fragTexCoord = vec2 (floor(gl_FragCoord.x - ii[value].ii_x)/(ii[value].ii_w-1)
+                                    , floor(gl_FragCoord.y - ii[value].ii_y)/(ii[value].ii_h-1));
+          vec4 color = texture(sampler2D(tex[value], samp), fragTexCoord);
           if (color.a == 1.0f)
             break;
         }
       }
     }
+  }
   }
 }
 
