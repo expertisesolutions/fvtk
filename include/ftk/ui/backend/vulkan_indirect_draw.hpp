@@ -12,6 +12,156 @@
 
 namespace ftk { namespace ui { namespace vulkan {
 
+template <typename WindowingBase>
+std::array<VkDescriptorSetLayout, 3> indirect_draw_descriptor_set
+  (fastdraw::output::vulkan::vulkan_output_info<WindowingBase>& output)
+{
+  using fastdraw::output::vulkan::from_result;
+  using fastdraw::output::vulkan::vulkan_error_code;
+    constexpr const int tex_max_size = 4096;
+    VkDescriptorSetLayoutBinding textureLayoutBinding = {};
+    textureLayoutBinding.binding = 0;
+    textureLayoutBinding.descriptorCount = tex_max_size;
+    textureLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    textureLayoutBinding.pImmutableSamplers = nullptr;
+    textureLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
+    samplerLayoutBinding.binding = 0;
+    samplerLayoutBinding.descriptorCount = 1;
+    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+    samplerLayoutBinding.pImmutableSamplers = nullptr;
+    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    VkDescriptorSetLayoutBinding ssboLayoutBinding = {};
+    ssboLayoutBinding.binding = 0;
+    ssboLayoutBinding.descriptorCount = 1;
+    ssboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    ssboLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT;
+
+    VkDescriptorSetLayoutBinding ssboZIndexLayoutBinding = {};
+    ssboZIndexLayoutBinding.binding = 1;
+    ssboZIndexLayoutBinding.descriptorCount = 1;
+    ssboZIndexLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    ssboZIndexLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    
+    VkDescriptorSetLayoutBinding indirectDrawLayoutBinding = {};
+    indirectDrawLayoutBinding.binding = 2;
+    indirectDrawLayoutBinding.descriptorCount = 1;
+    indirectDrawLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    indirectDrawLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT
+      | VK_SHADER_STAGE_COMPUTE_BIT;
+
+    VkDescriptorSetLayoutBinding indirectDrawSharedStateLayoutBinding = {};
+    indirectDrawSharedStateLayoutBinding.binding = 3;
+    indirectDrawSharedStateLayoutBinding.descriptorCount = 1;
+    indirectDrawSharedStateLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    indirectDrawSharedStateLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT;
+    
+    std::array<VkDescriptorSetLayoutBinding, 1> texture_bindings = {textureLayoutBinding//, samplerLayoutBinding
+                                                            /*, zindexPixelSboLayoutBinding
+                                                              , zindexArraySboLayoutBinding*/};
+    VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = static_cast<uint32_t>(texture_bindings.size());
+    layoutInfo.pBindings = texture_bindings.data();
+    // layoutInfo.bindingCount = 1; //static_cast<uint32_t>(bindings.size());
+    // layoutInfo.pBindings = /*bindings.data()*/&samplerLayoutBinding;
+    //layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+    
+    VkDescriptorSetLayout texture_layout_set;
+    auto r = from_result(vkCreateDescriptorSetLayout(output.device, &layoutInfo, nullptr, &texture_layout_set));
+    if (r != vulkan_error_code::success)
+      throw std::system_error(make_error_code(r));
+
+    std::array<VkDescriptorSetLayoutBinding, 1> sampler_bindings = {samplerLayoutBinding
+                                                            /*, zindexPixelSboLayoutBinding
+                                                              , zindexArraySboLayoutBinding*/};
+    VkDescriptorSetLayoutCreateInfo samplerLayoutInfo = {};
+    samplerLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    samplerLayoutInfo.bindingCount = static_cast<uint32_t>(sampler_bindings.size());
+    samplerLayoutInfo.pBindings = sampler_bindings.data();
+    // samplerLayoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+    
+    VkDescriptorSetLayout sampler_layout_set;
+    r = from_result(vkCreateDescriptorSetLayout(output.device, &samplerLayoutInfo, nullptr, &sampler_layout_set));
+    if (r != vulkan_error_code::success)
+      throw std::system_error(make_error_code(r));
+
+    std::array<VkDescriptorSetLayoutBinding, 4> ssbo_bindings = {ssboLayoutBinding
+                                                                 , ssboZIndexLayoutBinding
+                                                                 , indirectDrawLayoutBinding
+                                                                 , indirectDrawSharedStateLayoutBinding
+                                                            /*, zindexPixelSboLayoutBinding
+                                                              , zindexArraySboLayoutBinding*/};
+    VkDescriptorSetLayoutCreateInfo ssboLayoutInfo = {};
+    ssboLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    ssboLayoutInfo.bindingCount = static_cast<uint32_t>(ssbo_bindings.size());
+    ssboLayoutInfo.pBindings = ssbo_bindings.data();
+    ssboLayoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+    
+    VkDescriptorSetLayout ssbo_layout_set;
+    r = from_result(vkCreateDescriptorSetLayout(output.device, &ssboLayoutInfo, nullptr, &ssbo_layout_set));
+    if (r != vulkan_error_code::success)
+      throw std::system_error(make_error_code(r));
+
+    std::array<VkDescriptorSetLayout, 3> descriptor_sets {texture_layout_set
+                                                          , sampler_layout_set
+                                                          , ssbo_layout_set};
+
+    return descriptor_sets;
+}
+      
+template </*typename Point, */typename WindowingBase>
+fastdraw::output::vulkan::vulkan_draw_info
+create_initialize_draw_buffer_pipeline (fastdraw::output::vulkan::vulkan_output_info<WindowingBase>& output)
+{
+  using fastdraw::output::vulkan::from_result;
+  using fastdraw::output::vulkan::vulkan_error_code;
+
+  VkPipelineShaderStageCreateInfo computeShaderStageInfo = {};
+  computeShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  computeShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+  computeShaderStageInfo.module = output.shader_loader->load(fastdraw::output::vulkan::shader::initialize_indirect_draw_compute);
+  computeShaderStageInfo.pName = "main";
+
+  VkPushConstantRange pushConstantInfo = {};
+  pushConstantInfo.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
+    | VK_SHADER_STAGE_COMPUTE_BIT;
+  pushConstantInfo.offset = 0;
+  pushConstantInfo.size = sizeof(uint32_t);
+
+  VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+  pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  // pipelineLayoutInfo.setLayoutCount = desc_layout_size; // Optional
+  // pipelineLayoutInfo.pSetLayouts = &descriptor_set_layouts[0]; // Optional
+  auto descriptor_sets = indirect_draw_descriptor_set (output);
+  pipelineLayoutInfo.setLayoutCount = descriptor_sets.size();
+  pipelineLayoutInfo.pSetLayouts = &descriptor_sets[0];
+  pipelineLayoutInfo.pushConstantRangeCount = 1;
+  pipelineLayoutInfo.pPushConstantRanges = &pushConstantInfo;
+
+  VkPipelineLayout pipelineLayout;
+  auto r = from_result(vkCreatePipelineLayout(output.device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
+  if (r != vulkan_error_code::success)
+    throw std::system_error(make_error_code(r));
+
+  VkComputePipelineCreateInfo pipelineInfo = {};
+  pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+  pipelineInfo.stage = computeShaderStageInfo;
+  pipelineInfo.layout = pipelineLayout;
+  pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+  pipelineInfo.basePipelineIndex = -1;
+
+  VkPipeline computePipeline;
+  r = from_result(vkCreateComputePipelines(output.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &computePipeline));
+  if (r != vulkan_error_code::success)
+    throw std::system_error(make_error_code(r));
+  
+  return {computePipeline, pipelineLayout, output.renderpass, 6, 1, 0, 0, /*push_constants*/{}, {}
+          , {}/*descriptorSet*/, {descriptor_sets[2]}};
+}
+
 template </*typename Point, */typename WindowingBase>
 fastdraw::output::vulkan::vulkan_draw_info
 create_indirect_draw_buffer_filler_pipeline
@@ -73,92 +223,6 @@ create_indirect_draw_buffer_filler_pipeline
   CHRONO_START()
   
   {
-    constexpr const int tex_max_size = 4096;
-    VkDescriptorSetLayoutBinding textureLayoutBinding = {};
-    textureLayoutBinding.binding = 0;
-    textureLayoutBinding.descriptorCount = tex_max_size;
-    textureLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    textureLayoutBinding.pImmutableSamplers = nullptr;
-    textureLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-    VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
-    samplerLayoutBinding.binding = 0;
-    samplerLayoutBinding.descriptorCount = 1;
-    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-    samplerLayoutBinding.pImmutableSamplers = nullptr;
-    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-    VkDescriptorSetLayoutBinding ssboLayoutBinding = {};
-    ssboLayoutBinding.binding = 0;
-    ssboLayoutBinding.descriptorCount = 1;
-    ssboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    ssboLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT;
-
-    VkDescriptorSetLayoutBinding ssboZIndexLayoutBinding = {};
-    ssboZIndexLayoutBinding.binding = 1;
-    ssboZIndexLayoutBinding.descriptorCount = 1;
-    ssboZIndexLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    ssboZIndexLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    
-    VkDescriptorSetLayoutBinding indirectDrawLayoutBinding = {};
-    indirectDrawLayoutBinding.binding = 2;
-    indirectDrawLayoutBinding.descriptorCount = 1;
-    indirectDrawLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    indirectDrawLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT;
-
-    VkDescriptorSetLayoutBinding indirectDrawSharedStateLayoutBinding = {};
-    indirectDrawSharedStateLayoutBinding.binding = 3;
-    indirectDrawSharedStateLayoutBinding.descriptorCount = 1;
-    indirectDrawSharedStateLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    indirectDrawSharedStateLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT;
-    
-    std::array<VkDescriptorSetLayoutBinding, 1> texture_bindings = {textureLayoutBinding//, samplerLayoutBinding
-                                                            /*, zindexPixelSboLayoutBinding
-                                                              , zindexArraySboLayoutBinding*/};
-    VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = static_cast<uint32_t>(texture_bindings.size());
-    layoutInfo.pBindings = texture_bindings.data();
-    // layoutInfo.bindingCount = 1; //static_cast<uint32_t>(bindings.size());
-    // layoutInfo.pBindings = /*bindings.data()*/&samplerLayoutBinding;
-    //layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
-    
-  CHRONO_COMPARE()
-    VkDescriptorSetLayout texture_layout_set;
-    auto r = from_result(vkCreateDescriptorSetLayout(output.device, &layoutInfo, nullptr, &texture_layout_set));
-    if (r != vulkan_error_code::success)
-      throw std::system_error(make_error_code(r));
-
-    std::array<VkDescriptorSetLayoutBinding, 1> sampler_bindings = {samplerLayoutBinding
-                                                            /*, zindexPixelSboLayoutBinding
-                                                              , zindexArraySboLayoutBinding*/};
-    VkDescriptorSetLayoutCreateInfo samplerLayoutInfo = {};
-    samplerLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    samplerLayoutInfo.bindingCount = static_cast<uint32_t>(sampler_bindings.size());
-    samplerLayoutInfo.pBindings = sampler_bindings.data();
-    // samplerLayoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
-    
-    VkDescriptorSetLayout sampler_layout_set;
-    r = from_result(vkCreateDescriptorSetLayout(output.device, &samplerLayoutInfo, nullptr, &sampler_layout_set));
-    if (r != vulkan_error_code::success)
-      throw std::system_error(make_error_code(r));
-
-    std::array<VkDescriptorSetLayoutBinding, 4> ssbo_bindings = {ssboLayoutBinding
-                                                                 , ssboZIndexLayoutBinding
-                                                                 , indirectDrawLayoutBinding
-                                                                 , indirectDrawSharedStateLayoutBinding
-                                                            /*, zindexPixelSboLayoutBinding
-                                                              , zindexArraySboLayoutBinding*/};
-    VkDescriptorSetLayoutCreateInfo ssboLayoutInfo = {};
-    ssboLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    ssboLayoutInfo.bindingCount = static_cast<uint32_t>(ssbo_bindings.size());
-    ssboLayoutInfo.pBindings = ssbo_bindings.data();
-    ssboLayoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
-    
-    VkDescriptorSetLayout ssbo_layout_set;
-    r = from_result(vkCreateDescriptorSetLayout(output.device, &ssboLayoutInfo, nullptr, &ssbo_layout_set));
-    if (r != vulkan_error_code::success)
-      throw std::system_error(make_error_code(r));
 
     // ////
 
@@ -289,21 +353,25 @@ create_indirect_draw_buffer_filler_pipeline
     // for(auto first = &descriptor_set_layouts[0], last = first + desc_layout_size; first != last; ++first)
     //   *first = descriptorSetLayout;          
 
+    VkPushConstantRange pushConstantInfo = {};
+    pushConstantInfo.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
+      | VK_SHADER_STAGE_COMPUTE_BIT;
+    pushConstantInfo.offset = 0;
+    pushConstantInfo.size = sizeof(uint32_t);
+
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     // pipelineLayoutInfo.setLayoutCount = desc_layout_size; // Optional
     // pipelineLayoutInfo.pSetLayouts = &descriptor_set_layouts[0]; // Optional
-    std::array<VkDescriptorSetLayout, 3> descriptor_sets {texture_layout_set
-                                                          , sampler_layout_set
-                                                          , ssbo_layout_set
-                                                          /*, indirect_draw_layout_set*/};
+    auto descriptor_sets = indirect_draw_descriptor_set (output);
     pipelineLayoutInfo.setLayoutCount = descriptor_sets.size(); // Optional
     pipelineLayoutInfo.pSetLayouts = &descriptor_sets[0]; // Optional
-  CHRONO_COMPARE()
-    r = from_result(vkCreatePipelineLayout(output.device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &pushConstantInfo;
+
+    auto r = from_result(vkCreatePipelineLayout(output.device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
     if (r != vulkan_error_code::success)
       throw std::system_error(make_error_code(r));
-  CHRONO_COMPARE()
 
     VkPipelineDepthStencilStateCreateInfo depthStencil = {};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -464,7 +532,7 @@ create_indirect_draw_buffer_filler_pipeline
     // return {graphicsPipeline, pipelineLayout, output.renderpass, 6, 1, 0, 0, /*push_constants*/{}, {{0, vertexBuffer}, {0, vertexBuffer}}
     //         , descriptorSet, descriptorSetLayout};
     return {graphicsPipeline, pipelineLayout, output.renderpass, 6, 1, 0, 0, /*push_constants*/{}, {}
-            , {}/*descriptorSet*/, {texture_layout_set, sampler_layout_set, ssbo_layout_set}};
+            , {}/*descriptorSet*/, {descriptor_sets[0], descriptor_sets[1], descriptor_sets[2]}};
   }
   
   // return {};
