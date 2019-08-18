@@ -87,6 +87,40 @@ struct descriptor_fixed_array
     std::cout << "allocated descriptor" << std::endl;
   }
 
+  void replace (int index, info_type type)
+  {
+    std::cout << "push_back " << current_size << std::endl;
+    using fastdraw::output::vulkan::from_result;
+    using fastdraw::output::vulkan::vulkan_error_code;
+
+    std::cout << "image_view " << type.imageView << std::endl;
+
+    VkWriteDescriptorSet write_set = {};
+    write_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write_set.dstSet = this->set;
+    write_set.dstBinding = 0;
+    write_set.descriptorType = DescriptorType;
+    write_set.dstArrayElement = index;
+    std::cout << "count " << write_set.descriptorCount << " dstArrayElement "
+              << write_set.dstArrayElement << std::endl;
+    if (index == 0) // update all
+    {
+      std::array <info_type, Size> types;
+      for (auto&& t : types)
+        t = type;
+      write_set.descriptorCount = Size;
+      descriptor_type_traits::update_info (write_set, &types[0]);
+    }
+    else
+    {
+      write_set.descriptorCount = 1;
+      descriptor_type_traits::update_info (write_set, &type);
+    }
+    std::cout << "writing descriptorset" << std::endl;
+    vkUpdateDescriptorSets (device, 1, &write_set, 0, nullptr);
+    std::cout << "wrote descriptorset" << std::endl;
+  }
+
   void push_back (info_type type)
   {
     if (current_size == Size)

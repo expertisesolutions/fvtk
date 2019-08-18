@@ -375,8 +375,6 @@ struct toplevel_window
   }
   void replace_image_view (image_iterator image, VkImageView view)
   {
-    // vkFreeCommandBuffers (window.voutput.device, window.voutput.command_pool
-    //                       , 2, image->cache->command_buffer);
     image->must_draw[0] = true;
     image->must_draw[1] = true;
     image->image_view = view;
@@ -384,13 +382,9 @@ struct toplevel_window
     VkDescriptorImageInfo imageInfo = {};
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     imageInfo.imageView = view;
-    texture_descriptors.push_back (imageInfo);
+    //texture_descriptors.push_back (imageInfo);
+    texture_descriptors.replace (image->zindex, imageInfo);
 
-    // std::vector<VkImageView> image_views {background.image_view};
-    // for (auto&& image : images)
-    // {
-    //   image_views.push_back (image.image_view);
-    // }
     image->cache = toplevel_window_command_buffer_cache
         {/*{create_command_buffer
           (window.voutput.command_pool
