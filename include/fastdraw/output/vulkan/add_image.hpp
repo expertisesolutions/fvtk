@@ -1158,6 +1158,11 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     // std::unique_ptr<VkDescriptorSetLayout[]> descriptor_set_layouts{new VkDescriptorSetLayout[desc_layout_size]};
     // for(auto first = &descriptor_set_layouts[0], last = first + desc_layout_size; first != last; ++first)
     //   *first = descriptorSetLayout;          
+    VkPushConstantRange pushConstantInfo = {};
+    pushConstantInfo.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
+      | VK_SHADER_STAGE_COMPUTE_BIT;
+    pushConstantInfo.offset = 0;
+    pushConstantInfo.size = sizeof(uint32_t);
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -1168,6 +1173,8 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
                                                           , ssbo_layout_set};
     pipelineLayoutInfo.setLayoutCount = descriptor_sets.size(); // Optional
     pipelineLayoutInfo.pSetLayouts = &descriptor_sets[0]; // Optional
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &pushConstantInfo;
   CHRONO_COMPARE()
     r = from_result(vkCreatePipelineLayout(output.device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
     if (r != vulkan_error_code::success)
