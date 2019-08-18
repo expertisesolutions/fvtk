@@ -177,7 +177,8 @@ struct toplevel_window
       VkBufferCreateInfo bufferInfo = {};
       bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
       bufferInfo.size = sizeof(indirect_draw_info)*indirect_draw_info_array_size;
-      bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+      bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT
+        | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
       bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
       auto r = from_result(vkCreateBuffer(window.voutput.device, &bufferInfo, nullptr, &indirect_draw_buffer));
@@ -186,23 +187,6 @@ struct toplevel_window
     }
     buffer_allocator.allocate (indirect_draw_buffer);
 
-    // initialize indirect buffer
-    {
-      auto data = buffer_allocator.map (indirect_draw_buffer);
-
-      std::memset (data, 0, sizeof (indirect_draw_info)*indirect_draw_info_array_size);
-
-      for (indirect_draw_info* p = static_cast<indirect_draw_info*>(data)
-             , *last = p + indirect_draw_info_array_size
-             ;p != last; ++p)
-      {
-        std::memset (&p->fg_zindex[0], 0xFF, sizeof (p->fg_zindex));
-        p->indirect.vertexCount = 6;
-      }
-      
-      buffer_allocator.unmap (indirect_draw_buffer);
-    }
-    
     VkDescriptorImageInfo samplerInfo = {};
     samplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     samplerInfo.sampler = sampler;
@@ -252,19 +236,6 @@ struct toplevel_window
                        , static_cast<uint32_t>(width)
                        , static_cast<uint32_t>(height), 1, 0, 0};
     buffer_allocator.unmap (image_ssbo_buffer);
-    {
-      auto data = buffer_allocator.map (indirect_draw_buffer);
-      // workaround for now
-      for (indirect_draw_info* p = static_cast<indirect_draw_info*>(data)
-             , *last = p + indirect_draw_info_array_size
-             ; p != last; ++p)
-      {
-        std::cout << " p->image_length " << p->image_length << std::endl;
-        p->image_length++;
-      }
-      
-      buffer_allocator.unmap (indirect_draw_buffer);
-    }
 
     VkDescriptorImageInfo imageInfo = {};
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
