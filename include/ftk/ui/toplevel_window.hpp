@@ -15,6 +15,7 @@
 // #include <ftk/ui/backend/vulkan_storage_zindex_array.hpp>
 // #include <ftk/ui/backend/vulkan_storage_vector.hpp>
 #include <ftk/ui/backend/vulkan_command_buffer_cache.hpp>
+#include <ftk/ui/backend/vulkan_storage_buffer_allocator.hpp>
 #include <ftk/ui/backend/descriptor_fixed_array.hpp>
 
 #include <functional>
@@ -121,13 +122,91 @@ struct toplevel_window
   //: backend_(&backend)
     : window (backend.create_window(1280, 1000))
     , image_pipeline (fastdraw::output::vulkan::create_image_pipeline (window.voutput, 0))
-    , texture_descriptors (window.voutput.device, image_pipeline.descriptorSetLayout)
+    , texture_descriptors (window.voutput.device, image_pipeline.descriptorSetLayouts[0])
+    , sampler_descriptors (window.voutput.device, image_pipeline.descriptorSetLayouts[1])
     , vbuffer (window.voutput.device, window.voutput.physical_device)
+    , buffer_allocator (window.voutput.device, window.voutput.physical_device
+                        //, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                        , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+                        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
     // , storage_zindex (window.voutput.device, window.voutput.physical_device
     //                  , window.voutput.swapChainExtent)
     // , zindex_array (window.voutput.device, window.voutput.physical_device)
   {
+    using fastdraw::output::vulkan::vulkan_error_code;
+    using fastdraw::output::vulkan::from_result;
+    
     //backend_->exposure_signal.connect (std::bind(&toplevel_window<Backend>::exposure, this));
+    {
+      VkBufferCreateInfo bufferInfo = {};
+      bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+      bufferInfo.size = sizeof(image_info) * /*extent.width * extent.height*/ 4096;
+      bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+      bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+      auto r = from_result(vkCreateBuffer(window.voutput.device, &bufferInfo, nullptr, &image_ssbo_buffer));
+      if (r != vulkan_error_code::success)
+        throw std::system_error(make_error_code (r));
+    }
+    buffer_allocator.allocate (image_ssbo_buffer);
+
+    {
+      VkBufferCreateInfo bufferInfo = {};
+      bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+      bufferInfo.size = sizeof(uint32_t)*window.voutput.swapChainExtent.width * window.voutput.swapChainExtent.height;
+      bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+      bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+      auto r = from_result(vkCreateBuffer(window.voutput.device, &bufferInfo, nullptr, &image_zindex_ssbo_buffer));
+      if (r != vulkan_error_code::success)
+        throw std::system_error(make_error_code (r));
+    }
+    buffer_allocator.allocate (image_zindex_ssbo_buffer);
+
+    // zero initialize zindex buffer
+    {
+      auto data = buffer_allocator.map (image_zindex_ssbo_buffer);
+      std::memset (data, 0, sizeof(uint32_t) * window.voutput.swapChainExtent.width
+                   * window.voutput.swapChainExtent.height);
+      
+      buffer_allocator.unmap (image_zindex_ssbo_buffer);
+    }
+
+    {
+      VkBufferCreateInfo bufferInfo = {};
+      bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+      bufferInfo.size = sizeof(indirect_draw_info)*indirect_draw_info_array_size;
+      bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+      bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+      auto r = from_result(vkCreateBuffer(window.voutput.device, &bufferInfo, nullptr, &indirect_draw_buffer));
+      if (r != vulkan_error_code::success)
+        throw std::system_error(make_error_code (r));
+    }
+    buffer_allocator.allocate (indirect_draw_buffer);
+
+    // initialize indirect buffer
+    {
+      auto data = buffer_allocator.map (indirect_draw_buffer);
+
+      std::memset (data, 0, sizeof (indirect_draw_info)*indirect_draw_info_array_size);
+
+      for (indirect_draw_info* p = static_cast<indirect_draw_info*>(data)
+             , *last = p + indirect_draw_info_array_size
+             ;p != last; ++p)
+      {
+        std::memset (&p->fg_zindex[0], 0xFF, sizeof (p->fg_zindex));
+        p->indirect.vertexCount = 6;
+      }
+      
+      buffer_allocator.unmap (indirect_draw_buffer);
+    }
+    
+    VkDescriptorImageInfo samplerInfo = {};
+    samplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    samplerInfo.sampler = sampler;
+    sampler_descriptors.push_back (samplerInfo);
   }
 
   toplevel_window (toplevel_window&& other) = delete; // for now
@@ -164,13 +243,35 @@ struct toplevel_window
     auto /*zinfo*/zindex = /*zindex_array.*/create_new_zindex ();
     it->zindex = /*zinfo.*/zindex;
     std::cout << "it->zindex " << it->zindex << std::endl;
+    auto ssbo_data = buffer_allocator.map (image_ssbo_buffer);
+
+    auto image_info_ptr = static_cast<image_info*>(ssbo_data) + zindex;
+    *image_info_ptr = {static_cast<uint32_t>(zindex)
+                       , static_cast<uint32_t>(x)
+                       , static_cast<uint32_t>(y)
+                       , static_cast<uint32_t>(width)
+                       , static_cast<uint32_t>(height), 1, 0, 0};
+    buffer_allocator.unmap (image_ssbo_buffer);
+    {
+      auto data = buffer_allocator.map (indirect_draw_buffer);
+      // workaround for now
+      for (indirect_draw_info* p = static_cast<indirect_draw_info*>(data)
+             , *last = p + indirect_draw_info_array_size
+             ; p != last; ++p)
+      {
+        std::cout << " p->image_length " << p->image_length << std::endl;
+        p->image_length++;
+      }
+      
+      buffer_allocator.unmap (indirect_draw_buffer);
+    }
 
     VkDescriptorImageInfo imageInfo = {};
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     imageInfo.imageView = image.image_view;
     texture_descriptors.push_back (imageInfo);
     
-    std::vector<VkImageView> image_views {background.image_view};
+    std::vector<VkImageView> image_views;// {background.image_view};
     for (auto&& image : images)
     {
       image_views.push_back (image.image_view);
@@ -213,7 +314,7 @@ struct toplevel_window
           , 0.0f, 0.0f, 1.0f, 0.0f
           , 0.0f, 0.0f, 0.0f, 1.0f
        }
-       , /*zinfo.*/zindex
+       , /*zinfo.*/static_cast<unsigned int>(zindex)
        , {{}, {}, {}} // padding
       };
 
@@ -383,6 +484,18 @@ struct toplevel_window
     auto width = image->width;
     auto height = image->height;
 
+    {
+      auto ssbo_data = buffer_allocator.map (image_ssbo_buffer);
+
+      auto image_info_ptr = static_cast<image_info*>(ssbo_data) + image->zindex;
+      *image_info_ptr = {static_cast<uint32_t>(image->zindex)
+                         , static_cast<uint32_t>(x)
+                         , static_cast<uint32_t>(y)
+                         , static_cast<uint32_t>(width)
+                         , static_cast<uint32_t>(height), 1, 0, 0};
+      buffer_allocator.unmap (image_ssbo_buffer);
+    }
+    
     vbuffer.replace(image->cache->vertex_buffer_offset / sizeof(vertex_info)
                     , vertex_info
                        {
@@ -436,9 +549,12 @@ struct toplevel_window
   
   void load_background (toplevel_window_image bg)
   {
-    background = bg;
+    append_image (bg);
+    return;
+    //background = bg;
     //auto z = 1.0f;//16777215.0f;
     //auto z = 0.5f;
+#if 0
     auto zindex = /*zindex_array.get_zindex_info (0);*/create_new_zindex();
     background.zindex = /*zinfo.*/zindex;
     std::cout << "background zindex " << background.zindex << std::endl;
@@ -476,9 +592,10 @@ struct toplevel_window
                          , {{}, {}, {}} // padding
                        });
     std::cout << "background offset " << offset << std::endl;
+#endif
   }
 
-  toplevel_window_image background;
+  // toplevel_window_image background;
 
   struct vertex_info
   {
@@ -495,6 +612,17 @@ struct toplevel_window
     uint32_t x, y, w, h;
     uint32_t has_alpha;
     uint32_t found_alpha;
+    uint32_t padding;
+    
+  };
+
+  struct indirect_draw_info
+  {
+    VkDrawIndirectCommand indirect;
+    uint32_t image_length;
+    uint32_t fragment_data_length;
+    uint32_t buffers_to_draw[4096];
+    uint fg_zindex[4096];
   };
 
   //VkDescriptorPool texture_descriptor_pool;
@@ -504,14 +632,23 @@ struct toplevel_window
   mutable typename Backend::window window;
   fastdraw::output::vulkan::vulkan_draw_info image_pipeline;
   vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4096> texture_descriptors;
+  vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLER, 1> sampler_descriptors;
   std::vector<toplevel_framebuffer_region> framebuffers_damaged_regions[2];
   vertex_buffer <vertex_info> vbuffer;
+  vulkan::buffer_allocator buffer_allocator;
+  VkBuffer image_ssbo_buffer;
+  VkBuffer image_zindex_ssbo_buffer;
+  VkBuffer indirect_draw_buffer;
+  //VkBuffer indirect_draw_shared_state_buffer;
+  //storage_buffer <> ssbo_buffer;
   // struct storage_zindex<uint32_t> storage_zindex;
   // struct storage_zindex_array<uint32_t> zindex_array;
   //std::vector<toplevel_window_command_buffer_cache> buffer_cache;
   std::mutex image_mutex; // for images vector and command_buffers cache
   VkSampler const sampler = detail::render_thread_create_sampler (window.voutput.device);
-  VkRenderPass const renderPass = create_compatible_render_pass();
+  //VkRenderPass const renderPass = create_compatible_render_pass();
+
+  std::size_t const static constexpr indirect_draw_info_array_size = 32u;
 };
     
 } }

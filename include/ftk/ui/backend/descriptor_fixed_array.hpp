@@ -29,6 +29,17 @@ struct descriptor_type_traits<VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE>
     set.pImageInfo = info;
   }
 };
+
+template <>
+struct descriptor_type_traits<VK_DESCRIPTOR_TYPE_SAMPLER>
+{
+  typedef VkDescriptorImageInfo info_type;
+
+  static void update_info (VkWriteDescriptorSet& set, info_type const* info)
+  {
+    set.pImageInfo = info;
+  }
+};
   
 }
       

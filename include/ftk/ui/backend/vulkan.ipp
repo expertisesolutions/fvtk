@@ -364,10 +364,11 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
       deviceCInfo.pQueueCreateInfos = &queue_info[0];
       deviceCInfo.queueCreateInfoCount = queue_info.size();
       deviceCInfo.pEnabledFeatures = &deviceFeatures;
-      std::array<const char*, 2> requiredDeviceExtensions
+      std::array<const char*, 4> requiredDeviceExtensions
         ({"VK_KHR_swapchain"
           , VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME
-
+          , VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME
+          , VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME
 
           /*, "VK_EXT_external_memory_dma_buf"*/
           /*  , "VK_KHR_external_memory_fd", "VK_KHR_external_memory"*/
@@ -589,6 +590,36 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
       dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
       dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
+      VkSubpassDependency self_subpass_dependency = {};
+      self_subpass_dependency.srcSubpass = 0; // self-dependency
+      self_subpass_dependency.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+      self_subpass_dependency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      self_subpass_dependency.dstSubpass = 0; // self-dependency
+      self_subpass_dependency.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT;//VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
+      self_subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |  VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+      self_subpass_dependency.dependencyFlags = VK_DEPENDENCY_DEVICE_GROUP_BIT;
+
+      VkSubpassDependency storage_subpass_dependency = {};
+      storage_subpass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+      storage_subpass_dependency.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+      storage_subpass_dependency.srcStageMask = VK_PIPELINE_STAGE_HOST_BIT;
+      storage_subpass_dependency.dstSubpass = 0;
+      storage_subpass_dependency.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+      storage_subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      storage_subpass_dependency.dependencyFlags = VK_DEPENDENCY_DEVICE_GROUP_BIT;
+
+      VkSubpassDependency storage_end_subpass_dependency = {};
+      storage_end_subpass_dependency.srcSubpass = 0;
+      storage_end_subpass_dependency.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+      storage_end_subpass_dependency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      storage_end_subpass_dependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+      storage_end_subpass_dependency.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+      storage_end_subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_HOST_BIT;
+      storage_subpass_dependency.dependencyFlags = VK_DEPENDENCY_DEVICE_GROUP_BIT;
+      
+      std::array<VkSubpassDependency, 4> dependencies {dependency, self_subpass_dependency
+                                                       , storage_subpass_dependency, storage_end_subpass_dependency};
+      
       std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
       VkRenderPassCreateInfo renderPassInfo = {};
       renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -596,8 +627,10 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
       renderPassInfo.pAttachments = attachments.data();
       renderPassInfo.subpassCount = 1;
       renderPassInfo.pSubpasses = &subpass;
-      renderPassInfo.dependencyCount = 1;
-      renderPassInfo.pDependencies = &dependency;
+      // renderPassInfo.dependencyCount = 1;
+      // renderPassInfo.pDependencies = &dependency;
+      renderPassInfo.dependencyCount = dependencies.size();
+      renderPassInfo.pDependencies = &dependencies[0];
       
       if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
         throw std::runtime_error("failed to create render pass!");
