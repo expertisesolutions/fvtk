@@ -96,11 +96,11 @@ struct toplevel_framebuffer_region
   }
 };
     
-struct toplevel_window_command_buffer_cache
-{
-  //VkCommandBuffer command_buffer[2]; // for each framebuffer
-  unsigned int vertex_buffer_offset;
-};
+// struct toplevel_window_command_buffer_cache
+// {
+//   //VkCommandBuffer command_buffer[2]; // for each framebuffer
+//   unsigned int vertex_buffer_offset;
+// };
     
 struct toplevel_window_image
 {
@@ -112,7 +112,7 @@ struct toplevel_window_image
 
   toplevel_framebuffer_region framebuffers_regions[2];
 
-  std::optional<toplevel_window_command_buffer_cache> cache;
+  //std::optional<toplevel_window_command_buffer_cache> cache;
 };
 
 template <typename Backend>
@@ -124,7 +124,7 @@ struct toplevel_window
     , image_pipeline (fastdraw::output::vulkan::create_image_pipeline (window.voutput, 0))
     , texture_descriptors (window.voutput.device, image_pipeline.descriptorSetLayouts[0])
     , sampler_descriptors (window.voutput.device, image_pipeline.descriptorSetLayouts[1])
-    , vbuffer (window.voutput.device, window.voutput.physical_device)
+      //, vbuffer (window.voutput.device, window.voutput.physical_device)
     , buffer_allocator (window.voutput.device, window.voutput.physical_device
                         //, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
                         , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
@@ -289,88 +289,6 @@ struct toplevel_window
        , {{}, {}, {}} // padding
       };
 
-    auto invalidated_vbuffer = vbuffer.size() == vbuffer.capacity();
-    auto buffer_cache_offset =  vbuffer.push_back (vinfo);
-    // if (invalidated_vbuffer)
-    // {
-    //   //auto buffer_cache_offset =  vbuffer.push_back (vinfo);
-    //   //static_cast<void>(buffer_cache_offset); // it is the last element
-
-    //   for (auto&& image : images)
-    //   {
-    //     // if (image.cache)
-    //     // {
-    //     //   // vkFreeCommandBuffers (window.voutput.device, window.voutput.command_pool
-    //     //   //                       , 2, image.cache->command_buffer);
-    //     //   image.cache =
-    //     //     toplevel_window_command_buffer_cache
-    //     //     {/*{create_command_buffer
-    //     //       (window.voutput.command_pool
-    //     //        , window.voutput.device
-    //     //        , window.swapChainFramebuffers[0]
-    //     //        , window.voutput.swapChainExtent
-    //     //        , renderPass
-    //     //        , vbuffer.get_buffer()
-    //     //        , sampler
-    //     //        , image_views
-    //     //        , image.x, image.y, image.width, image.height
-    //     //        , image.cache->vertex_buffer_offset
-    //     //        , image_pipeline
-    //     //        , storage_zindex.get_buffer()
-    //     //        , zindex_array.get_buffer()
-    //     //        )
-    //     //       , create_command_buffer
-    //     //       (window.voutput.command_pool
-    //     //        , window.voutput.device
-    //     //        , window.swapChainFramebuffers[1]
-    //     //        , window.voutput.swapChainExtent
-    //     //        , renderPass
-    //     //        , vbuffer.get_buffer()
-    //     //        , sampler
-    //     //        , image_views
-    //     //        , image.x, image.y, image.width, image.height
-    //     //        , image.cache->vertex_buffer_offset
-    //     //        , image_pipeline
-    //     //        , storage_zindex.get_buffer()
-    //     //        , zindex_array.get_buffer()
-    //     //        )}
-    //     //        , */image.cache->vertex_buffer_offset};
-    //     // }
-    //   }
-    // }
-
-    it->cache = toplevel_window_command_buffer_cache
-        {/*{create_command_buffer
-          (window.voutput.command_pool
-           , window.voutput.device
-           , window.swapChainFramebuffers[0]
-           , window.voutput.swapChainExtent
-           , renderPass
-           , vbuffer.get_buffer()
-           , sampler
-           , image_views
-           , x, y, width, height
-           , buffer_cache_offset
-           , image_pipeline
-           , storage_zindex.get_buffer()
-           , zindex_array.get_buffer()
-           )
-          , create_command_buffer
-          (window.voutput.command_pool
-           , window.voutput.device
-           , window.swapChainFramebuffers[1]
-           , window.voutput.swapChainExtent
-           , renderPass
-           , vbuffer.get_buffer()
-           , sampler
-           , image_views
-           , x, y, width, height
-           , buffer_cache_offset
-           , image_pipeline
-           , storage_zindex.get_buffer()
-           , zindex_array.get_buffer()
-           )}
-           , */buffer_cache_offset};
     return it;
   }
   void replace_image_view (image_iterator image, VkImageView view)
@@ -384,39 +302,10 @@ struct toplevel_window
     imageInfo.imageView = view;
     //texture_descriptors.push_back (imageInfo);
     texture_descriptors.replace (image->zindex, imageInfo);
-
-    image->cache = toplevel_window_command_buffer_cache
-        {/*{create_command_buffer
-          (window.voutput.command_pool
-           , window.voutput.device
-           , window.swapChainFramebuffers[0]
-           , window.voutput.swapChainExtent
-           , renderPass
-           , vbuffer.get_buffer()
-           , sampler
-           , image_views
-           , image->x, image->y, image->width, image->height
-           , image->cache->vertex_buffer_offset
-           , image_pipeline
-           , storage_zindex.get_buffer()
-           , zindex_array.get_buffer()
-           ) 
-          , create_command_buffer
-          (window.voutput.command_pool
-           , window.voutput.device
-           , window.swapChainFramebuffers[1]
-           , window.voutput.swapChainExtent
-           , renderPass
-           , vbuffer.get_buffer()
-           , sampler
-           , image_views
-           , image->x, image->y, image->width, image->height
-           , image->cache->vertex_buffer_offset
-           , image_pipeline
-           , storage_zindex.get_buffer()
-           , zindex_array.get_buffer()
-           )}
-         , */image->cache->vertex_buffer_offset};
+  }
+  void remove_image (image_iterator image)
+  {
+    
   }
   void move_image (image_iterator image, std::int32_t x, std::int32_t y)
   {
@@ -460,48 +349,6 @@ struct toplevel_window
                          , static_cast<uint32_t>(height), 1, 0, 0};
       buffer_allocator.unmap (image_ssbo_buffer);
     }
-    
-    vbuffer.replace(image->cache->vertex_buffer_offset / sizeof(vertex_info)
-                    , vertex_info
-                       {
-                         {
-                           // -1 because the positions are inclusive, and not past the end
-                             fastdraw::coordinates::ratio(x, whole_width)
-                           , fastdraw::coordinates::ratio(y, whole_height)
-                           , 0.0f, 1.0f
-                           , fastdraw::coordinates::ratio(x + width-1, whole_width)
-                           , fastdraw::coordinates::ratio(y, whole_height)
-                           , 0.0f, 1.0f
-                           , fastdraw::coordinates::ratio(x + width-1, whole_width)
-                           , fastdraw::coordinates::ratio(y + height-1, whole_height)
-                           , 0.0f, 1.0f
-                           , fastdraw::coordinates::ratio(x + width-1, whole_width)
-                           , fastdraw::coordinates::ratio(y + height-1, whole_height)
-                           , 0.0f, 1.0f
-                           , fastdraw::coordinates::ratio(x, whole_width)
-                           , fastdraw::coordinates::ratio(y + height-1, whole_height)
-                           , 0.0f, 1.0f
-                           , fastdraw::coordinates::ratio(x, whole_width)
-                           , fastdraw::coordinates::ratio(y, whole_height)
-                           , 0.0f, 1.0f
-                         }
-                         , {
-                              0.0f, 0.0f
-                            , 1.0f, 0.0f
-                            , 1.0f, 1.0f
-                            , 1.0f, 1.0f
-                            , 0.0f, 1.0f
-                            , 0.0f, 0.0f
-                         }
-                         , {
-                              1.0f, 0.0f, 0.0f, 0.0f
-                            , 0.0f, 1.0f, 0.0f, 0.0f
-                            , 0.0f, 0.0f, 1.0f, 0.0f
-                            , 0.0f, 0.0f, 0.0f, 1.0f
-                         }
-                         , image->zindex
-                         , {{}, {}, {}} // padding
-                       });
   }
 
   VkRenderPass create_compatible_render_pass ();
@@ -599,7 +446,7 @@ struct toplevel_window
   vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4096> texture_descriptors;
   vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLER, 1> sampler_descriptors;
   std::vector<toplevel_framebuffer_region> framebuffers_damaged_regions[2];
-  vertex_buffer <vertex_info> vbuffer;
+  //vertex_buffer <vertex_info> vbuffer;
   vulkan::buffer_allocator buffer_allocator;
   VkBuffer image_ssbo_buffer;
   VkBuffer image_zindex_ssbo_buffer;
