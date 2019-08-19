@@ -410,61 +410,64 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     // bufferInfo.offset = 0;
     // bufferInfo.range = sizeof(UniformBufferObject);
 
-    VkVertexInputBindingDescription bindingDescriptions[2] = {};
-    bindingDescriptions[0].binding = 0;
-    bindingDescriptions[0].stride = sizeof(float)*2;
-    bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    // VkVertexInputBindingDescription bindingDescriptions[2] = {};
+    // bindingDescriptions[0].binding = 0;
+    // bindingDescriptions[0].stride = sizeof(float)*2;
+    // bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-    bindingDescriptions[1].binding = 1;
-    bindingDescriptions[1].stride = 0;//sizeof(float)*4;
-    bindingDescriptions[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+    // bindingDescriptions[1].binding = 1;
+    // bindingDescriptions[1].stride = 0;//sizeof(float)*4;
+    // bindingDescriptions[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
     
-    VkVertexInputAttributeDescription attributeDescriptions[6] = {};
+    // VkVertexInputAttributeDescription attributeDescriptions[6] = {};
 
-    attributeDescriptions[0].binding = 0;
-    attributeDescriptions[0].location = 0;
-    attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescriptions[0].offset = 0;
+    // attributeDescriptions[0].binding = 0;
+    // attributeDescriptions[0].location = 0;
+    // attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+    // attributeDescriptions[0].offset = 0;
 
-    attributeDescriptions[1].binding = 0;
-    attributeDescriptions[1].location = 1;
-    attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescriptions[1].offset = sizeof(float)*12;
+    // attributeDescriptions[1].binding = 0;
+    // attributeDescriptions[1].location = 1;
+    // attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
+    // attributeDescriptions[1].offset = sizeof(float)*12;
 
-    attributeDescriptions[2].binding = 1;
-    attributeDescriptions[2].location = 2;
-    attributeDescriptions[2].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[2].offset = sizeof(float)*12 + sizeof(float)*12;
+    // attributeDescriptions[2].binding = 1;
+    // attributeDescriptions[2].location = 2;
+    // attributeDescriptions[2].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    // attributeDescriptions[2].offset = sizeof(float)*12 + sizeof(float)*12;
 
-    attributeDescriptions[3].binding = 1;
-    attributeDescriptions[3].location = 3;
-    attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[3].offset = sizeof(float)*12 + sizeof(float)*12 + sizeof(float)*4;
+    // attributeDescriptions[3].binding = 1;
+    // attributeDescriptions[3].location = 3;
+    // attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    // attributeDescriptions[3].offset = sizeof(float)*12 + sizeof(float)*12 + sizeof(float)*4;
 
-    attributeDescriptions[4].binding = 1;
-    attributeDescriptions[4].location = 4;
-    attributeDescriptions[4].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[4].offset = sizeof(float)*12 + sizeof(float)*12 + sizeof(float)*4*2;
+    // attributeDescriptions[4].binding = 1;
+    // attributeDescriptions[4].location = 4;
+    // attributeDescriptions[4].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    // attributeDescriptions[4].offset = sizeof(float)*12 + sizeof(float)*12 + sizeof(float)*4*2;
 
-    attributeDescriptions[5].binding = 1;
-    attributeDescriptions[5].location = 5;
-    attributeDescriptions[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[5].offset = sizeof(float)*12 + sizeof(float)*12 + sizeof(float)*4*3;
+    // attributeDescriptions[5].binding = 1;
+    // attributeDescriptions[5].location = 5;
+    // attributeDescriptions[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    // attributeDescriptions[5].offset = sizeof(float)*12 + sizeof(float)*12 + sizeof(float)*4*3;
+
+    // VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+    // vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    // vertexInputInfo.vertexBindingDescriptionCount = sizeof(bindingDescriptions)/sizeof(bindingDescriptions[0]);
+    // vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions; // Optional
+    // vertexInputInfo.vertexAttributeDescriptionCount = sizeof(attributeDescriptions)/sizeof(attributeDescriptions[0]);
+    // vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions; // Optional
+    
+    // // attributeDescriptions[2].binding = 0;
+    // // attributeDescriptions[2].location = 2;
+    // // attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+    // // attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+
+    //  // std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = sizeof(bindingDescriptions)/sizeof(bindingDescriptions[0]);
-    vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions; // Optional
-    vertexInputInfo.vertexAttributeDescriptionCount = sizeof(attributeDescriptions)/sizeof(attributeDescriptions[0]);
-    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions; // Optional
     
-    // attributeDescriptions[2].binding = 0;
-    // attributeDescriptions[2].location = 2;
-    // attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-    // attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-
-     // std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
-
      VkDescriptorSet descriptorSet;
 
      VkDescriptorSetAllocateInfo allocInfo = {};
@@ -1007,66 +1010,66 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     // bufferInfo.offset = 0;
     // bufferInfo.range = sizeof(UniformBufferObject);
 
-    VkVertexInputBindingDescription bindingDescriptions[4] = {};
-    bindingDescriptions[0].binding = 0;
-    bindingDescriptions[0].stride = sizeof(float)*4;
-    bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    // VkVertexInputBindingDescription bindingDescriptions[4] = {};
+    // bindingDescriptions[0].binding = 0;
+    // bindingDescriptions[0].stride = sizeof(float)*4;
+    // bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-    bindingDescriptions[1].binding = 1;
-    bindingDescriptions[1].stride = sizeof(float)*2;
-    bindingDescriptions[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    // bindingDescriptions[1].binding = 1;
+    // bindingDescriptions[1].stride = sizeof(float)*2;
+    // bindingDescriptions[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     
-    bindingDescriptions[2].binding = 2;
-    bindingDescriptions[2].stride = 0;
-    bindingDescriptions[2].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+    // bindingDescriptions[2].binding = 2;
+    // bindingDescriptions[2].stride = 0;
+    // bindingDescriptions[2].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
 
-    bindingDescriptions[3].binding = 3;
-    bindingDescriptions[3].stride = 0;
-    bindingDescriptions[3].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+    // bindingDescriptions[3].binding = 3;
+    // bindingDescriptions[3].stride = 0;
+    // bindingDescriptions[3].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
     
-    VkVertexInputAttributeDescription attributeDescriptions[7] = {};
+    // VkVertexInputAttributeDescription attributeDescriptions[7] = {};
 
-    attributeDescriptions[0].binding = 0;
-    attributeDescriptions[0].location = 0;
-    attributeDescriptions[0].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[0].offset = 0;
+    // attributeDescriptions[0].binding = 0;
+    // attributeDescriptions[0].location = 0;
+    // attributeDescriptions[0].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    // attributeDescriptions[0].offset = 0;
 
-    attributeDescriptions[1].binding = 1;
-    attributeDescriptions[1].location = 1;
-    attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescriptions[1].offset = sizeof(float)*24;
+    // attributeDescriptions[1].binding = 1;
+    // attributeDescriptions[1].location = 1;
+    // attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
+    // attributeDescriptions[1].offset = sizeof(float)*24;
 
-    attributeDescriptions[2].binding = 2;
-    attributeDescriptions[2].location = 2;
-    attributeDescriptions[2].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[2].offset = sizeof(float)*24 + sizeof(float)*12;
+    // attributeDescriptions[2].binding = 2;
+    // attributeDescriptions[2].location = 2;
+    // attributeDescriptions[2].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    // attributeDescriptions[2].offset = sizeof(float)*24 + sizeof(float)*12;
 
-    attributeDescriptions[3].binding = 2;
-    attributeDescriptions[3].location = 3;
-    attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[3].offset = sizeof(float)*24 + sizeof(float)*12 + sizeof(float)*4;
+    // attributeDescriptions[3].binding = 2;
+    // attributeDescriptions[3].location = 3;
+    // attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    // attributeDescriptions[3].offset = sizeof(float)*24 + sizeof(float)*12 + sizeof(float)*4;
 
-    attributeDescriptions[4].binding = 2;
-    attributeDescriptions[4].location = 4;
-    attributeDescriptions[4].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[4].offset = sizeof(float)*24 + sizeof(float)*12 + sizeof(float)*4*2;
+    // attributeDescriptions[4].binding = 2;
+    // attributeDescriptions[4].location = 4;
+    // attributeDescriptions[4].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    // attributeDescriptions[4].offset = sizeof(float)*24 + sizeof(float)*12 + sizeof(float)*4*2;
 
-    attributeDescriptions[5].binding = 2;
-    attributeDescriptions[5].location = 5;
-    attributeDescriptions[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[5].offset = sizeof(float)*24 + sizeof(float)*12 + sizeof(float)*4*3;
+    // attributeDescriptions[5].binding = 2;
+    // attributeDescriptions[5].location = 5;
+    // attributeDescriptions[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    // attributeDescriptions[5].offset = sizeof(float)*24 + sizeof(float)*12 + sizeof(float)*4*3;
 
-    attributeDescriptions[6].binding = 3;
-    attributeDescriptions[6].location = 6;
-    attributeDescriptions[6].format = VK_FORMAT_R32_UINT;
-    attributeDescriptions[6].offset = sizeof(float)*24 + sizeof(float)*12 + sizeof(float)*4*4;
+    // attributeDescriptions[6].binding = 3;
+    // attributeDescriptions[6].location = 6;
+    // attributeDescriptions[6].format = VK_FORMAT_R32_UINT;
+    // attributeDescriptions[6].offset = sizeof(float)*24 + sizeof(float)*12 + sizeof(float)*4*4;
     
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
-    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = sizeof(bindingDescriptions)/sizeof(bindingDescriptions[0]);
-    vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions; // Optional
-    vertexInputInfo.vertexAttributeDescriptionCount = sizeof(attributeDescriptions)/sizeof(attributeDescriptions[0]);
-    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions; // Optional
+    // VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+    // vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    // vertexInputInfo.vertexBindingDescriptionCount = sizeof(bindingDescriptions)/sizeof(bindingDescriptions[0]);
+    // vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions; // Optional
+    // vertexInputInfo.vertexAttributeDescriptionCount = sizeof(attributeDescriptions)/sizeof(attributeDescriptions[0]);
+    // vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions; // Optional
     
     // attributeDescriptions[2].binding = 0;
     // attributeDescriptions[2].location = 2;
@@ -1108,6 +1111,9 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
   //   vkUpdateDescriptorSets(output.device, 1/*static_cast<uint32_t>(descriptorWrites.size())*/, &descriptorWrites/*.data()*/, 0, nullptr);
   // CHRONO_COMPARE()
 
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;

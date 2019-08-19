@@ -5,27 +5,9 @@ const int tex_max_size = 4096;
 const int screen_width = 1280;
 const int screen_height = 1000;
 
-//layout(location = 0) in vec4 inPosition;
-//layout(location = 1) in vec2 inTexCoord;
-layout(location = 2) in mat4 transformMatrix;
-//layout(location = 6) in uint zindex;
-//layout(location = 7) in uint chain_array_size;
-
 layout(location = 0) out vec2 fragTexCoord;
-//layout(location = 1) out flat uint out_zindex;
 layout(location = 2) out flat uint InstanceID;
-layout(location = 3) out flat vec4 color;
 
-// vec4 background_position[6]
-// =
-//   {
-//    {-1.0f, -1.0f, 0.0f, 1.0f}
-//    ,  {1.0f, -1.0f, 0.0f, 1.0f}
-//    ,  {1.0f,  1.0f, 0.0f, 1.0f}
-//    ,  {1.0f,  1.0f, 0.0f, 1.0f}
-//    , {-1.0f,  1.0f, 0.0f, 1.0f}
-//    , {-1.0f, -1.0f, 0.0f, 1.0f}
-//   };
 vec2 texcoord[6]
 =
   {
@@ -96,28 +78,9 @@ void main()
      , {scaled_x1, scaled_y2, 0.0f, 1.0f}
      , {scaled_x1, scaled_y1, 0.0f, 1.0f}
     };
-  // vec4 positions[6] =
-  //   {
-  //      {-1.0f, -1.0f, 0.0f, 1.0f}
-  //    , { 1.0f, -1.0f, 0.0f, 1.0f}
-  //    , { 1.0f,  1.0f, 0.0f, 1.0f}
-  //    , { 1.0f,  1.0f, 0.0f, 1.0f}
-  //    , {-1.0f,  1.0f, 0.0f, 1.0f}
-  //    , {-1.0f, -1.0f, 0.0f, 1.0f}
-  //   };
-  vec4 colors [4]
-    = vec4[4]
-    (
-       vec4 (1.0f, 0.0f, 0.0f, 1.0f)
-     , vec4 (0.0f, 1.0f, 0.0f, 1.0f)
-     , vec4 (0.0f, 0.0f, 1.0f, 1.0f)
-     , vec4 (0.0f, 1.0f, 1.0f, 1.0f)
-    );
-  color = colors[zindex];
-  //uint vid = uint(mod(gl_VertexIndex, 3));
   uint vid = gl_VertexIndex;
-  gl_Position = positions[vid] /** transformMatrix*/ /**screenMatrix*/;
+  gl_Position = positions[vid];
   fragTexCoord = texcoord[vid];
-  if (mod(gl_VertexIndex, 3) == 0)
+  if (gl_VertexIndex == 0)
     InstanceID = gl_InstanceIndex;
 }

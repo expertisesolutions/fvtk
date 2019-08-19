@@ -5,21 +5,9 @@ const int tex_max_size = 4096;
 const int screen_width = 1280;
 const int screen_height = 1000;
 
-// input from vertex shader
-layout(location = 0) in vec2 fragTexCoord;
-layout(location = 1) in flat uint zindex;
-//layout(location = 2) in flat uint chain_array_size;
-// from descriptors
 layout(set = 0, binding = 0) uniform texture2D tex[tex_max_size];
 layout(set = 1, binding = 0) uniform sampler samp;
-// layout(std430, binding = 2) buffer chain_pixel_buffer
-// {
-//   uint chain_index[];
-// };
-// layout(std430, binding = 3) buffer zindex_chain_layout
-// {
-//   uint zindex_chain[]; // indexed by zindex
-// };
+
 struct image_info
 {
   uint ii_zindex;
@@ -50,16 +38,16 @@ layout (std430, set = 2, binding = 2) buffer indirect_draw
   uint first_vertex;
   uint first_instance;
 
-  uint image_length;
+  uint padding_was_image_length;
   uint fragment_data_length;
   uint buffers_to_draw [tex_max_size];
-  //fragment_data fragment_datas[tex_max_size];
   uint fg_zindex[tex_max_size];
 };
-// layout (std430, set = 3, binding = 1) buffer indirect_draw_shared_state
-// {
-  
-// };
+
+layout(std430, push_constant) uniform PushConstants
+{
+  uint image_length;
+} constants;
 
 // output
 layout(location = 0) out vec4 outColor;
@@ -72,7 +60,7 @@ void main()
   if (!gl_HelperInvocation)
   {
   uint error = 0;
-  for (uint i = image_length; i != 0; --i)
+  for (uint i = constants.image_length; i != 0; --i)
   {
     uint value = i-1;
     if (buffers_to_draw[value] == 0)
