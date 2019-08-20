@@ -111,8 +111,8 @@ std::array<VkDescriptorSetLayout, 3> indirect_draw_descriptor_set
 
     return descriptor_sets;
 }
-      
-template </*typename Point, */typename WindowingBase>
+/*
+template <typename WindowingBase>
 fastdraw::output::vulkan::vulkan_draw_info
 create_initialize_draw_buffer_pipeline (fastdraw::output::vulkan::vulkan_output_info<WindowingBase>& output)
 {
@@ -158,9 +158,9 @@ create_initialize_draw_buffer_pipeline (fastdraw::output::vulkan::vulkan_output_
   if (r != vulkan_error_code::success)
     throw std::system_error(make_error_code(r));
   
-  return {computePipeline, pipelineLayout, output.renderpass, 6, 1, 0, 0, /*push_constants*/{}, {}
-          , {}/*descriptorSet*/, {descriptor_sets[2]}};
-}
+  return {computePipeline, pipelineLayout, output.renderpass, 6, 1, 0, 0, {}, {}
+          , {}, {descriptor_sets[2]}};
+}*/
 
 template </*typename Point, */typename WindowingBase>
 fastdraw::output::vulkan::vulkan_draw_info
