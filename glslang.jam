@@ -1,0 +1,60 @@
+# Copyright 2019 Felipe Magno de Almeida
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import type ;
+import common ;
+import generators ;
+import toolset ;
+import project ;
+import targets ;
+
+type.register SPV : spv ;
+type.register SHADER : comp vert frag ;
+
+rule init ( name ? )
+{
+  if ! $(.initialized)
+  {
+    .initialized = true ;
+
+    generators.register-standard glslang.compile : SHADER : SPV ;
+
+    IMPORT $(__name__) : glslang : : glslang ;
+  }
+
+  if $(name)
+  {
+    .glslangValidator = $(name) ;
+    check-glslangValidator ;
+  }
+
+  if ! $(.glslangValidator)
+  {
+    check-gslangValidator ;
+  }
+}
+
+local rule check-gslangValidator ( )
+{
+  .glslangValidator =  [ common.get-invocation-command glslang : glslangValidator : $(.glslangValidator) ] ;
+}
+
+rule glslang ( target : source )
+{
+  local project = [ project.current ] ;
+
+  targets.create-typed-target SPV : $(project) : $(target) : $(source) ;
+}
+
+rule compile ( target : source : requirements * )
+{
+  glslang-compile $(target) : $(source) ;
+  NAME on $(target) = $(.glslangValidator) ;
+}
+
+actions glslang-compile
+{
+  $(.glslangValidator) -V $(>) -o $(<)
+}

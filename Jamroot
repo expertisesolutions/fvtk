@@ -1,7 +1,33 @@
+# Copyright 2019 Felipe Magno de Almeida
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+using glslang ;
 
 import testing : run ;
+import string ;
 
 project ftk ;
+
+local shader_sources =
+  res/shader/vulkan/fill_indirect_draw_buffer.frag
+  res/shader/vulkan/fill_indirect_draw_buffer.vert
+  res/shader/vulkan/image_ssbo.frag
+  res/shader/vulkan/image_ssbo.vert
+ ;
+local shader_targets = ;
+
+for local file in $(shader_sources)
+{
+  local chars =  [ string.chars $(file:S) ] ;
+  local suffix = $(chars[2-]:J="") ;
+  local target = $(file:B)_$(suffix) ;
+  shader_targets += $(target) ;
+  glslang $(target) : $(file) ;
+}
+
+alias shaders : $(shader_targets) ;
 
 alias ftk : /pc-ts//pc-ts
  : : : <include>include <cxxflags>-std=c++17 <linkflags>-lstdc++fs
@@ -13,3 +39,4 @@ alias testsuite :
 # [ run tests/opengl1.cpp fastdraw x11 gl glu glew glfw ]
  [ run tests/text_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /glfw//glfw /hb//hb /ft2//ft2 ]
  ;
+
