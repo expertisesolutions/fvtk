@@ -157,7 +157,8 @@ pc::future<typename vulkan_image_loader<Executor>::output_image_type> vulkan_ima
        using fastdraw::output::vulkan::from_result;
        using fastdraw::output::vulkan::vulkan_error_code;
        
-       auto format = VK_FORMAT_B8G8R8A8_UNORM; //VK_FORMAT_R8G8B8A8_UNORM; RGBA vs ARGB
+       //auto format = VK_FORMAT_B8G8R8A8_UNORM; //VK_FORMAT_R8G8B8A8_UNORM; RGBA vs ARGB
+       auto format = VK_FORMAT_R8G8B8A8_UNORM; //VK_FORMAT_R8G8B8A8_UNORM; RGBA vs ARGB
   
        VkImageCreateInfo imageInfo = {};
        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
