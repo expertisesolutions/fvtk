@@ -208,12 +208,15 @@ for local file in $(shader_sources)
 }
 
 alias shaders : $(shader_targets) ;
+stage compiled-res : shaders : <location>compiled-res/shader/vulkan ;
 
-alias ftk : /portable_concurrency//portable_concurrency
+alias ftk : /portable_concurrency//portable_concurrency compiled-res
  : : : <include>include <cxxflags>-std=c++17 <linkflags>-lstdc++fs
  ;
 
+path-constant res-path : compiled-res ;
+
 alias testsuite :
- [ run tests/text_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 ]
+ [ run tests/text_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 : $(res-path) ]
  ;
 

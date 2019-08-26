@@ -34,13 +34,13 @@ const char* name (shader s)
 {
   switch (s)
   {
-  case shader::fill_solid_color_bind_frag: return "fill_solid_color_bind.frag.spv";
-  case shader::triangle_bind_vertex:       return "triangle_bind.vert.spv";
-  case shader::image_vertex:               return "image_ssbo.vert.spv";
-  case shader::indirect_draw_vertex:       return "fill_indirect_draw_buffer.vert.spv";
-    //case shader::image_frag:                 return "image.frag.spv";
-  case shader::image_frag:             return "image_ssbo.frag.spv";
-  case shader::indirect_draw_frag:         return "fill_indirect_draw_buffer.frag.spv";
+  case shader::fill_solid_color_bind_frag: return "fill_solid_color_bind_frag.spv";
+  case shader::triangle_bind_vertex:       return "triangle_bind_vert.spv";
+  case shader::image_vertex:               return "image_ssbo_vert.spv";
+  case shader::indirect_draw_vertex:       return "fill_indirect_draw_buffer_vert.spv";
+    //case shader::image_frag:                 return "image_frag.spv";
+  case shader::image_frag:             return "image_ssbo_frag.spv";
+  case shader::indirect_draw_frag:         return "fill_indirect_draw_buffer_frag.spv";
   default:                                 throw std::runtime_error ("Shader not found");
   }
 }
@@ -62,7 +62,10 @@ struct shader_loader
   shader_loader () = default;
   shader_loader (std::filesystem::path path
                  , VkDevice device)
-    : path (path), device(device) {}
+    : path (path), device(device)
+  {
+    std::cerr << "shader_loader " << path << std::endl;
+  }
 
   VkPipelineShaderStageCreateInfo pipeline_stage (shader s) const
   {
@@ -84,6 +87,7 @@ struct shader_loader
       std::ifstream file(name.c_str(), std::ios::ate | std::ios::binary);
 
       if (!file.is_open()) {
+        std::cerr << "trying to find shader in " << name.c_str() << std::endl;
         throw std::runtime_error("failed to open file!");
       }
       size_t fileSize = (size_t) file.tellg();

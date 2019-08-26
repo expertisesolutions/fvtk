@@ -34,7 +34,7 @@ struct xlib_surface : x11_base<Loop>
     VkSurfaceKHR surface;
   };
 
-  window create_window(int width, int height) const;
+  window create_window(int width, int height, std::filesystem::path resource_path) const;
 };
 
       

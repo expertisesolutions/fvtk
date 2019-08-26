@@ -139,7 +139,7 @@ struct x11_base
     }
   }
 
-  window create_window(int width, int height) const
+  window create_window(int width, int height, std::filesystem::path resource_path) const
   {
     XSetWindowAttributes swa = {};
     swa.colormap = cmap;

@@ -74,13 +74,14 @@ std::vector<unsigned int> get_presentation_family (VkPhysicalDevice physical_dev
 }
 
 template <typename Loop>
-typename xlib_surface<Loop>::window xlib_surface<Loop>::create_window(int width, int height) const
+typename xlib_surface<Loop>::window xlib_surface<Loop>::create_window
+   (int width, int height, std::filesystem::path resource_path) const
 {
     using fastdraw::output::vulkan::from_result;
     using fastdraw::output::vulkan::vulkan_error_code;
 
     window w;
-    static_cast<typename base::window&>(w) = base::create_window (width, height);
+    static_cast<typename base::window&>(w) = base::create_window (width, height, resource_path);
 
     {
       uint32_t count;
@@ -181,7 +182,8 @@ typename xlib_surface<Loop>::window xlib_surface<Loop>::create_window(int width,
     return w;
 }
       
-khr_display::window khr_display::create_window(int width, int height) const
+khr_display::window khr_display::create_window(int width, int height
+  , std::filesystem::path resource_path) const
 {
     using fastdraw::output::vulkan::from_result;
     using fastdraw::output::vulkan::vulkan_error_code;
@@ -324,12 +326,13 @@ khr_display::window khr_display::create_window(int width, int height) const
   }
       
 template <typename Loop, typename WindowingBase>
-typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create_window (int width, int height) const
+typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create_window (int width, int height
+  , std::filesystem::path resource_path) const
 {
     using fastdraw::output::vulkan::from_result;
     using fastdraw::output::vulkan::vulkan_error_code;
 
-    window_base wb = WindowingBase::create_window(width, height);
+    window_base wb = WindowingBase::create_window(width, height, resource_path);
 
     VkDevice device;
     VkRenderPass renderPass;
@@ -689,7 +692,7 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
               , renderPass, commandPool, &w.shader_loader}}, /**graphicsFamilyIndex*/static_cast<int>(graphic_families[0])
               , swapChainFramebuffers, swapChain
               , executionFinishedFence, {}/*mt_buffer_pool*/, std::move(queues)};
-    w.shader_loader = {"../fastdraw/res/shader/vulkan", device};
+    w.shader_loader = {resource_path / "shader/vulkan", device};
     // for faster loading later
     w.shader_loader.load(fastdraw::output::vulkan::shader::image_vertex);
     w.shader_loader.load(fastdraw::output::vulkan::shader::image_frag);

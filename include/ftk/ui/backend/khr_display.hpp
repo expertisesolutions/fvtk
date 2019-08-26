@@ -28,7 +28,7 @@ struct khr_display
     VkSurfaceKHR surface;
   };
 
-  window create_window(int width, int height) const;
+  window create_window(int width, int height, std::filesystem::path resource_path) const;
 };
 
 } } }

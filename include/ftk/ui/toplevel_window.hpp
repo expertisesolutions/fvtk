@@ -113,8 +113,8 @@ struct toplevel_window_image
 template <typename Backend>
 struct toplevel_window
 {
-  toplevel_window (Backend& backend)
-    : window (backend.create_window(1280, 1000))
+  toplevel_window (Backend& backend, std::filesystem::path resource_path)
+    : window (backend.create_window(1280, 1000, resource_path))
     , image_pipeline (fastdraw::output::vulkan::create_image_pipeline (window.voutput, 0))
     , texture_descriptors (window.voutput.device, image_pipeline.descriptorSetLayouts[0])
     , sampler_descriptors (window.voutput.device, image_pipeline.descriptorSetLayouts[1])

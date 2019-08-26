@@ -18,16 +18,27 @@
 #include <ftk/ui/backend/vulkan_draw.hpp>
 #include <ftk/ui/backend/vulkan.ipp>
 
+#include <filesystem>
 
-int main()
+int main(int argc, char* argv[])
 {
   uv_loop_t loop;
   uv_loop_init (&loop);
 
+  if (argc < 2)
+  {
+    std::cout << "Pass directory for resource path" << std::endl;
+    return 1;
+  }
+
+  std::filesystem::path res_path (argv[1]);
+
+  std::cout << "resource path " << res_path << std::endl;
+
   typedef ftk::ui::backend::vulkan<ftk::ui::backend::uv, ftk::ui::backend::xlib_surface<ftk::ui::backend::uv>> backend_type;
   backend_type backend({&loop});
 
-  ftk::ui::toplevel_window<backend_type> w(backend);
+  ftk::ui::toplevel_window<backend_type> w(backend, res_path);
 
   std::cout << "w width " << w.window.voutput.swapChainExtent.width << std::endl;
   
@@ -36,7 +47,6 @@ int main()
   on_draw (backend, w);
   
   uv_run(&loop, UV_RUN_DEFAULT);
-  //while(1);
 
   uv_loop_close(&loop);
 }
