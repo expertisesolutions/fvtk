@@ -96,12 +96,6 @@ struct toplevel_framebuffer_region
   }
 };
     
-// struct toplevel_window_command_buffer_cache
-// {
-//   //VkCommandBuffer command_buffer[2]; // for each framebuffer
-//   unsigned int vertex_buffer_offset;
-// };
-    
 struct toplevel_window_image
 {
   VkImageView image_view;
@@ -111,28 +105,21 @@ struct toplevel_window_image
   bool must_draw[2] = {true, true};
 
   toplevel_framebuffer_region framebuffers_regions[2];
-
-  //std::optional<toplevel_window_command_buffer_cache> cache;
 };
 
 template <typename Backend>
 struct toplevel_window
 {
   toplevel_window (Backend& backend)
-  //: backend_(&backend)
     : window (backend.create_window(1280, 1000))
     , image_pipeline (fastdraw::output::vulkan::create_image_pipeline (window.voutput, 0))
     , texture_descriptors (window.voutput.device, image_pipeline.descriptorSetLayouts[0])
     , sampler_descriptors (window.voutput.device, image_pipeline.descriptorSetLayouts[1])
-      //, vbuffer (window.voutput.device, window.voutput.physical_device)
     , buffer_allocator (window.voutput.device, window.voutput.physical_device
                         //, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
                         , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
                         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                         | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-    // , storage_zindex (window.voutput.device, window.voutput.physical_device
-    //                  , window.voutput.swapChainExtent)
-    // , zindex_array (window.voutput.device, window.voutput.physical_device)
   {
     using fastdraw::output::vulkan::vulkan_error_code;
     using fastdraw::output::vulkan::from_result;
@@ -150,28 +137,6 @@ struct toplevel_window
         throw std::system_error(make_error_code (r));
     }
     buffer_allocator.allocate (image_ssbo_buffer);
-
-    {
-      VkBufferCreateInfo bufferInfo = {};
-      bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-      bufferInfo.size = sizeof(uint32_t)*window.voutput.swapChainExtent.width * window.voutput.swapChainExtent.height;
-      bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-      bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-      auto r = from_result(vkCreateBuffer(window.voutput.device, &bufferInfo, nullptr, &image_zindex_ssbo_buffer));
-      if (r != vulkan_error_code::success)
-        throw std::system_error(make_error_code (r));
-    }
-    buffer_allocator.allocate (image_zindex_ssbo_buffer);
-
-    // zero initialize zindex buffer
-    {
-      auto data = buffer_allocator.map (image_zindex_ssbo_buffer);
-      std::memset (data, 0, sizeof(uint32_t) * window.voutput.swapChainExtent.width
-                   * window.voutput.swapChainExtent.height);
-      
-      buffer_allocator.unmap (image_zindex_ssbo_buffer);
-    }
 
     {
       VkBufferCreateInfo bufferInfo = {};
@@ -195,23 +160,6 @@ struct toplevel_window
 
   toplevel_window (toplevel_window&& other) = delete; // for now
 
-  // void exposure ()
-  // {
-  //   std::cout << "exposure event for toplevel window" << std::endl;
-
-  //   // cached scene
-    
-  // }
-
-  // std::size_t  add_on_top (void* buffer, std::int32_t x, std::int32_t y, std::int32_t width, std::int32_t height, std::uint32_t stride)
-  // {
-  //   shm_buffers.push_back ({buffer, x, y, width, height, stride});
-  // }
-
-  //std::mutex render_mutex;
-
-  //void create_vertex_buffer();
-  
   typedef std::list<toplevel_window_image>::iterator image_iterator;
 
   image_iterator append_image (toplevel_window_image image)
@@ -224,8 +172,8 @@ struct toplevel_window
     auto y = it->y;
     auto width = it->width;
     auto height = it->height;
-    auto /*zinfo*/zindex = /*zindex_array.*/create_new_zindex ();
-    it->zindex = /*zinfo.*/zindex;
+    auto zindex = create_new_zindex ();
+    it->zindex = zindex;
     std::cout << "it->zindex " << it->zindex << std::endl;
     auto ssbo_data = buffer_allocator.map (image_ssbo_buffer);
 
@@ -241,53 +189,6 @@ struct toplevel_window
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     imageInfo.imageView = image.image_view;
     texture_descriptors.push_back (imageInfo);
-    
-    std::vector<VkImageView> image_views;// {background.image_view};
-    for (auto&& image : images)
-    {
-      image_views.push_back (image.image_view);
-    }
-    
-    vertex_info vinfo =
-      {
-       {
-        // -1 because the positions are inclusive, and not past the end
-        fastdraw::coordinates::ratio(x, whole_width)
-        , fastdraw::coordinates::ratio(y, whole_height)
-        , 0.0f, 1.0f
-        , fastdraw::coordinates::ratio(x + width-1, whole_width)
-        , fastdraw::coordinates::ratio(y, whole_height)
-        , 0.0f, 1.0f
-        , fastdraw::coordinates::ratio(x + width-1, whole_width)
-        , fastdraw::coordinates::ratio(y + height-1, whole_height)
-        , 0.0f, 1.0f
-        , fastdraw::coordinates::ratio(x + width-1, whole_width)
-        , fastdraw::coordinates::ratio(y + height-1, whole_height)
-        , 0.0f, 1.0f
-        , fastdraw::coordinates::ratio(x, whole_width)
-        , fastdraw::coordinates::ratio(y + height-1, whole_height)
-        , 0.0f, 1.0f
-        , fastdraw::coordinates::ratio(x, whole_width)
-        , fastdraw::coordinates::ratio(y, whole_height)
-        , 0.0f, 1.0f
-       }
-       , {
-            0.0f, 0.0f
-          , 1.0f, 0.0f
-          , 1.0f, 1.0f
-          , 1.0f, 1.0f
-          , 0.0f, 1.0f
-          , 0.0f, 0.0f
-       }
-       , {
-            1.0f, 0.0f, 0.0f, 0.0f
-          , 0.0f, 1.0f, 0.0f, 0.0f
-          , 0.0f, 0.0f, 1.0f, 0.0f
-          , 0.0f, 0.0f, 0.0f, 1.0f
-       }
-       , /*zinfo.*/static_cast<unsigned int>(zindex)
-       , {{}, {}, {}} // padding
-      };
 
     return it;
   }
@@ -300,12 +201,54 @@ struct toplevel_window
     VkDescriptorImageInfo imageInfo = {};
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     imageInfo.imageView = view;
-    //texture_descriptors.push_back (imageInfo);
     texture_descriptors.replace (image->zindex, imageInfo);
   }
   void remove_image (image_iterator image)
   {
-    
+    toplevel_framebuffer_region empty{};
+
+    std::cout << "removing image to " << image->x << "x" << image->y << " damage on fb[0]? "
+              << (image->framebuffers_regions[0] != empty)
+              << " fb[1]? " << (image->framebuffers_regions[1] != empty) << std::endl;
+
+    if (/*!image->must_draw[0] && */image->framebuffers_regions[0] != empty)
+    {
+      std::cout << "pushing damage region fb[0] " << image->framebuffers_regions[0].x << "x"
+                << image->framebuffers_regions[0].y << std::endl;
+      framebuffers_damaged_regions[0].push_back (image->framebuffers_regions[0]);
+      image->framebuffers_regions[0] = {};
+    }
+    if (/*!image->must_draw[1] && */image->framebuffers_regions[1] != empty)
+    {
+      std::cout << "pushing damage region fb[1] " << image->framebuffers_regions[1].x << "x"
+                << image->framebuffers_regions[1].y << std::endl;
+      framebuffers_damaged_regions[1].push_back (image->framebuffers_regions[1]);
+      image->framebuffers_regions[1] = {};
+    }
+    image->must_draw[0] = false;
+    image->must_draw[1] = false;
+    image->width = 0;
+    image->height = 0;
+
+    {
+      auto ssbo_data = buffer_allocator.map (image_ssbo_buffer);
+
+      auto image_info_ptr = static_cast<image_info*>(ssbo_data) + image->zindex;
+      *image_info_ptr = {static_cast<uint32_t>(image->zindex)
+                         , static_cast<uint32_t>(image->x)
+                         , static_cast<uint32_t>(image->y)
+                         , static_cast<uint32_t>(image->width)
+                         , static_cast<uint32_t>(image->height), 1, 0, 0};
+      buffer_allocator.unmap (image_ssbo_buffer);
+    }
+
+    vkDestroyImageView(window.voutput.device, image->image_view, nullptr);
+    image->image_view = VK_NULL_HANDLE;
+
+    VkDescriptorImageInfo imageInfo = {};
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageInfo.imageView = images.back().image_view;
+    texture_descriptors.replace (image->zindex, imageInfo);
   }
   void move_image (image_iterator image, std::int32_t x, std::int32_t y)
   {
@@ -362,61 +305,9 @@ struct toplevel_window
   void load_background (toplevel_window_image bg)
   {
     append_image (bg);
-    return;
-    //background = bg;
-    //auto z = 1.0f;//16777215.0f;
-    //auto z = 0.5f;
-#if 0
-    auto zindex = /*zindex_array.get_zindex_info (0);*/create_new_zindex();
-    background.zindex = /*zinfo.*/zindex;
-    std::cout << "background zindex " << background.zindex << std::endl;
-    VkDescriptorImageInfo imageInfo = {};
-    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    imageInfo.imageView = background.image_view;
-    texture_descriptors.push_back (imageInfo);
-    
-    unsigned int offset
-      = vbuffer.push_back (vertex_info
-                       {
-                         {
-                             -1.0f, -1.0f, 0.0f, 1.0f
-                           ,  1.0f, -1.0f, 0.0f, 1.0f
-                           ,  1.0f,  1.0f, 0.0f, 1.0f
-                           ,  1.0f,  1.0f, 0.0f, 1.0f
-                           , -1.0f,  1.0f, 0.0f, 1.0f
-                           , -1.0f, -1.0f, 0.0f, 1.0f
-                         }
-                         , {
-                              0.0f, 0.0f
-                            , 1.0f, 0.0f
-                            , 1.0f, 1.0f
-                            , 1.0f, 1.0f
-                            , 0.0f, 1.0f
-                            , 0.0f, 0.0f
-                         }
-                         , {
-                              1.0f, 0.0f, 0.0f, 0.0f
-                            , 1.0f, 1.0f, 0.0f, 0.0f
-                            , 0.0f, 0.0f, 1.0f, 0.0f
-                            , 0.0f, 0.0f, 0.0f, 1.0f
-                         }
-                         , /*zinfo.*/zindex
-                         , {{}, {}, {}} // padding
-                       });
-    std::cout << "background offset " << offset << std::endl;
-#endif
   }
 
   // toplevel_window_image background;
-
-  struct vertex_info
-  {
-    float vertices [24];
-    float tex_coordinates [12];
-    float transform_matrix [16];
-    uint zindex;
-    uint padding[3];
-  };
 
   struct image_info
   {
@@ -437,28 +328,17 @@ struct toplevel_window
     uint fg_zindex[4096];
   };
 
-  //VkDescriptorPool texture_descriptor_pool;
-  // Backend* backend_;
-  // should be a fastdraw something
   std::list<toplevel_window_image> images;
   mutable typename Backend::window window;
   fastdraw::output::vulkan::vulkan_draw_info image_pipeline;
   vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4096> texture_descriptors;
   vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLER, 1> sampler_descriptors;
   std::vector<toplevel_framebuffer_region> framebuffers_damaged_regions[2];
-  //vertex_buffer <vertex_info> vbuffer;
   vulkan::buffer_allocator buffer_allocator;
   VkBuffer image_ssbo_buffer;
-  VkBuffer image_zindex_ssbo_buffer;
   VkBuffer indirect_draw_buffer;
-  //VkBuffer indirect_draw_shared_state_buffer;
-  //storage_buffer <> ssbo_buffer;
-  // struct storage_zindex<uint32_t> storage_zindex;
-  // struct storage_zindex_array<uint32_t> zindex_array;
-  //std::vector<toplevel_window_command_buffer_cache> buffer_cache;
   std::mutex image_mutex; // for images vector and command_buffers cache
   VkSampler const sampler = detail::render_thread_create_sampler (window.voutput.device);
-  //VkRenderPass const renderPass = create_compatible_render_pass();
 
   std::size_t const static constexpr indirect_draw_info_array_size = 32u;
 };
