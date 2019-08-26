@@ -11,6 +11,7 @@
 #define FTK_FTK_UI_BACKEND_VULKAN_BUFFER_ALLOCATOR_HPP
 
 #include <list>
+#include <map>
 
 namespace ftk { namespace ui { namespace vulkan {
 

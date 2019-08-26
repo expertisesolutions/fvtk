@@ -11,6 +11,7 @@
 #define FTK_FTK_UI_BACKEND_VULKAN_QUEUES_HPP
 
 #include <variant>
+#include <atomic>
 
 namespace ftk { namespace ui { namespace backend {
 

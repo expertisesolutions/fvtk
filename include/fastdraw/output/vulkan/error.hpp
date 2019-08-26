@@ -17,6 +17,8 @@
 #include <cassert>
 #include <iostream>
 
+#include <vulkan/vulkan.h>
+
 namespace fastdraw { namespace output { namespace vulkan {
 
 enum class vulkan_error_code

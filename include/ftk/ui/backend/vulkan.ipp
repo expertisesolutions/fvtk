@@ -80,7 +80,7 @@ typename xlib_surface<Loop>::window xlib_surface<Loop>::create_window(int width,
     using fastdraw::output::vulkan::vulkan_error_code;
 
     window w;
-    static_cast<base::window&>(w) = base::create_window (width, height);
+    static_cast<typename base::window&>(w) = base::create_window (width, height);
 
     {
       uint32_t count;

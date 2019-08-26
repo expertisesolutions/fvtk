@@ -18,6 +18,9 @@
 #include <ftk/ui/backend/vulkan_storage_buffer_allocator.hpp>
 #include <ftk/ui/backend/descriptor_fixed_array.hpp>
 
+#include <fastdraw/output/vulkan/vulkan_draw_info.hpp>
+#include <fastdraw/output/vulkan/add_image.hpp>
+
 #include <functional>
 
 #include <iostream>

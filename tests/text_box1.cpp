@@ -24,7 +24,7 @@ int main()
   uv_loop_t loop;
   uv_loop_init (&loop);
 
-  typedef ftk::ui::backend::vulkan<ftk::ui::backend::uv> backend_type;
+  typedef ftk::ui::backend::vulkan<ftk::ui::backend::uv, ftk::ui::backend::xlib_surface<ftk::ui::backend::uv>> backend_type;
   backend_type backend({&loop});
 
   ftk::ui::toplevel_window<backend_type> w(backend);

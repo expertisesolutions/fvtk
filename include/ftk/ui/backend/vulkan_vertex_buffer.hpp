@@ -10,6 +10,12 @@
 #ifndef FTK_FTK_UI_BACKEND_VULKAN_VERTEX_BUFFER_HPP
 #define FTK_FTK_UI_BACKEND_VULKAN_VERTEX_BUFFER_HPP
 
+#include <fastdraw/output/vulkan/error.hpp>
+
+#include <vulkan/vulkan.h>
+
+#include <vector>
+
 namespace ftk { namespace ui {
 
 template <typename...T>
