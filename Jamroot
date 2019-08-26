@@ -3,6 +3,186 @@
 # (See accompanying file LICENSE_1_0.txt or copy at
 # http://www.boost.org/LICENSE_1_0.txt)
 
+import project ;
+import configure ;
+import property-set ;
+
+path-constant current-pwd : . ;
+
+rule init-deps ( )
+{
+  local using-conan = [ MATCH ^--use-package-manager=(.*)$ : [ modules.peek : ARGV ] ] ;
+
+  local pkg-config-libraries =
+   vulkan
+   harfbuzz
+   freetype2
+   libinput
+   libudev
+   libuv
+   xkbcommon
+   libpng
+   libjpeg
+   libdrm
+   ;
+
+  if ! $(using-conan)
+  {
+    pkg-config-librariies += pugixml ;
+  }
+  
+  for local lib in $(pkg-config-libraries)
+  {
+    local project = [ project.find $(lib) : $(current-pwd) ] ;
+    if ! $(project)
+    {
+      project $(lib) ;
+      alias $(lib) : : : : <cxxflags>"`pkg-config --cflags $(lib)`" <linkflags>"`pkg-config --libs $(lib)`" ;
+  
+      exe has_$(lib) : [ obj has_$(lib)_obj : build/$(lib).cpp /$(lib)//$(lib) ] ;
+      explicit has_$(lib) ;
+    }
+  }
+  
+  rule configure-vulkan ( properties * )
+  {
+    if ! [ configure.builds /vulkan//has_vulkan : $(properties) : "vulkan" ]
+    {
+      ECHO not found vulkan library. Install with apt-get install libvulkan-devel or something like this. ;
+    }
+  }
+  
+  rule configure-harfbuzz ( properties * )
+  {
+    if ! [ configure.builds /harfbuzz//has_harfbuzz : $(properties) : "harfbuzz" ]
+    {
+      ECHO not found harfbuzz library. Install with apt-get install libharfbuzz-devel or something like this. ;
+    }
+  }
+  
+  rule configure-freetype2 ( properties * )
+  {
+    if ! [ configure.builds /freetype2//has_freetype2 : $(properties) : "freetype2" ]
+    {
+      ECHO not found freetype2 library. Install with apt-get install libfreetype2-devel or something like this. ;
+    }
+  }
+  
+  rule configure-libinput ( properties * )
+  {
+    if ! [ configure.builds /libinput//has_libinput : $(properties) : "libinput" ]
+    {
+      ECHO not found libinput library. Install with apt-get install libinput-devel or something like this. ;
+    }
+  }
+  
+  rule configure-libudev ( properties * )
+  {
+    if ! [ configure.builds /libudev//has_libudev : $(properties) : "libudev" ]
+    {
+      ECHO not found libudev library. Install with apt-get install libudev-devel or something like this. ;
+    }
+  }
+  
+  rule configure-libuv ( properties * )
+  {
+    if ! [ configure.builds /libuv//has_libuv : $(properties) : "libuv" ]
+    {
+      ECHO not found libuv library. Install with apt-get install libuv-devel or something like this. ;
+    }
+  }
+  
+  rule configure-xkbcommon ( properties * )
+  {
+    if ! [ configure.builds /xkbcommon//has_xkbcommon : $(properties) : "xkbcommon" ]
+    {
+      ECHO not found xkbcommon library. Install with apt-get install libxkbcommon-devel or something like this. ;
+    }
+  }
+  
+  rule configure-pugixml ( properties * )
+  {
+    if ! [ configure.builds /pugixml//has_pugixml : $(properties) : "xkbcommon" ]
+    {
+      ECHO not found pugixml library. Install with apt-get install libpugixml-devel or something like this. ;
+    }
+  }
+  
+  rule configure-libpng ( properties * )
+  {
+    if ! [ configure.builds /libpng//has_libpng : $(properties) : "libpng" ]
+    {
+      ECHO not found libpng library. Install with apt-get install libpng-devel or something like this. ;
+    }
+  }
+  
+  rule configure-libjpeg ( properties * )
+  {
+    if ! [ configure.builds /libjpeg//has_libjpeg : $(properties) : "libjpeg" ]
+    {
+      ECHO not found libjpeg library. Install with apt-get install libjpeg-devel or something like this. ;
+    }
+  }
+  
+  rule configure-libdrm ( properties * )
+  {
+    if ! [ configure.builds /libdrm//has_libdrm : $(properties) : "libdrm" ]
+    {
+      ECHO not found libdrm library. Install with apt-get install libdrm-devel or something like this. ;
+    }
+  }
+  
+  for local lib in $(pkg-config-libraries)
+  {
+    local project = [ project.find $(lib) : $(current-pwd) ] ;
+    if ! $(project)
+    {
+      alias build_options_$(lib) : : : : <conditional>@configure-$(lib) ;
+    }
+  }
+  
+  if ! $(using-conan)
+  {
+    local boost = [ project.find boost_program_options : $(current-pwd) ] ;
+    if ! $(boost)
+    {
+      project boost_program_options ;
+      lib boost_program_options : : <name>boost_program_options ;
+    }
+  }
+  
+  if ! $(empty)
+  {
+    local x11 = [ project.find x11 : $(current-pwd) ] ;
+    if ! $(x11)
+    {
+      project x11 ;
+      lib x11 : : <name>X11 ;
+    }  
+  }
+  
+  if ! $(using-conan)
+  {
+    local pc-ts = [ project.find portable_concurrency : $(current-pwd) ] ;
+    if ! $(pc-ts)
+    {
+      local pc-ts-prefix-dir = [ MATCH ^--pc-ts-dir=(.*)$ : [ modules.peek : ARGV ] ] ;
+      if ! $(pc-ts-prefix-dir)
+      {
+        ECHO Not found pc-ts library. Please download and install it. Then pass --pc-ts-dir=path-to-installed-pc-ts to build command ;
+      }
+      else
+      {
+        project portable_concurrency ;
+        lib portable_concurrency : : <name>portable_concurrency <search>$(pc-ts-prefix-dir)/lib <search>$(pc-ts-prefix-dir)/lib64
+          : : <include>$(pc-ts-prefix-dir)/include ;
+      }
+    }
+  }
+}
+
+init-deps ;
+
 using glslang ;
 
 import testing : run ;
@@ -34,9 +214,6 @@ alias ftk : /portable_concurrency//portable_concurrency
  ;
 
 alias testsuite :
-# [ run tests/test1.cpp fastdraw ]
-# [ run tests/test_gl1.cpp fastdraw x11 gl glu glew ]
-# [ run tests/opengl1.cpp fastdraw x11 gl glu glew glfw ]
- [ run tests/text_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /glfw//glfw /hb//hb /ft2//ft2 ]
+ [ run tests/text_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 ]
  ;
 
