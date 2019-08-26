@@ -29,7 +29,7 @@ for local file in $(shader_sources)
 
 alias shaders : $(shader_targets) ;
 
-alias ftk : /pc-ts//pc-ts
+alias ftk : /portable_concurrency//portable_concurrency
  : : : <include>include <cxxflags>-std=c++17 <linkflags>-lstdc++fs
  ;
 
