@@ -553,7 +553,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
     fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragShaderStageInfo.module = output.shader_loader->load(shader::image_frag);
+    fragShaderStageInfo.module = output.shader_loader->load(shader::indirect_draw_component_frag);
     fragShaderStageInfo.pName = "main";
 
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};

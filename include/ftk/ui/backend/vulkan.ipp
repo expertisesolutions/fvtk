@@ -694,8 +694,6 @@ typename vulkan<Loop, WindowingBase>::window vulkan<Loop, WindowingBase>::create
               , executionFinishedFence, {}/*mt_buffer_pool*/, std::move(queues)};
     w.shader_loader = {resource_path / "shader/vulkan", device};
     // for faster loading later
-    w.shader_loader.load(fastdraw::output::vulkan::shader::image_vertex);
-    w.shader_loader.load(fastdraw::output::vulkan::shader::image_frag);
     return w;
 }
       

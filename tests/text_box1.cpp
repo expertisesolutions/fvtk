@@ -42,9 +42,12 @@ int main(int argc, char* argv[])
 
   std::cout << "w width " << w.window.voutput.swapChainExtent.width << std::endl;
   
-  ftk::ui::text_box tb;
+  // ftk::ui::text_box tb;
 
-  on_draw (backend, w);
+  // on_draw (backend, w);
+
+  w.append_component ({10, 10, 200, 200, ftk::ui::rectangle_component{{1.0f, 0.0f, 0.0f, 1.0f}}});
+  draw (w);
   
   uv_run(&loop, UV_RUN_DEFAULT);
 

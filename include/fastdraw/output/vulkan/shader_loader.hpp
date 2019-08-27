@@ -24,10 +24,11 @@ enum class shader
   fill_solid_color_bind_frag,
   triangle_bind_vertex,
   image_vertex,
-  image_frag,
+  //image_frag,
   //image_frag_mod,
-  indirect_draw_frag,
-  indirect_draw_vertex
+  fill_indirect_draw_frag,
+  fill_indirect_draw_vertex,
+  indirect_draw_component_frag
 };
 
 const char* name (shader s)
@@ -37,10 +38,11 @@ const char* name (shader s)
   case shader::fill_solid_color_bind_frag: return "fill_solid_color_bind_frag.spv";
   case shader::triangle_bind_vertex:       return "triangle_bind_vert.spv";
   case shader::image_vertex:               return "image_ssbo_vert.spv";
-  case shader::indirect_draw_vertex:       return "fill_indirect_draw_buffer_vert.spv";
+  case shader::fill_indirect_draw_vertex:       return "fill_indirect_draw_buffer_vert.spv";
     //case shader::image_frag:                 return "image_frag.spv";
-  case shader::image_frag:             return "image_ssbo_frag.spv";
-  case shader::indirect_draw_frag:         return "fill_indirect_draw_buffer_frag.spv";
+    //case shader::image_frag:             return "image_ssbo_frag.spv";
+  case shader::fill_indirect_draw_frag:         return "fill_indirect_draw_buffer_frag.spv";
+  case shader::indirect_draw_component_frag:         return "indirect_draw_component_frag.spv";
   default:                                 throw std::runtime_error ("Shader not found");
   }
 }
@@ -52,7 +54,7 @@ VkShaderStageFlagBits stage_bits (shader s)
   case shader::fill_solid_color_bind_frag: return VK_SHADER_STAGE_FRAGMENT_BIT;
   case shader::triangle_bind_vertex:       return VK_SHADER_STAGE_VERTEX_BIT;
   case shader::image_vertex:               return VK_SHADER_STAGE_VERTEX_BIT;
-  case shader::image_frag:                 return VK_SHADER_STAGE_FRAGMENT_BIT;
+    //case shader::image_frag:                 return VK_SHADER_STAGE_FRAGMENT_BIT;
   default:                                 throw std::runtime_error ("Shader not found");
   };      
 }

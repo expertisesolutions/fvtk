@@ -562,9 +562,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
     fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    CHRONO_COMPARE()
-    fragShaderStageInfo.module = output.shader_loader->load(shader::image_frag);
-    CHRONO_COMPARE()
+    fragShaderStageInfo.module = output.shader_loader->load(shader::indirect_draw_component_frag);
     fragShaderStageInfo.pName = "main";
 
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
@@ -1143,17 +1141,13 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    CHRONO_COMPARE()
     vertShaderStageInfo.module = output.shader_loader->load(shader::image_vertex);
-    CHRONO_COMPARE()
     vertShaderStageInfo.pName = "main";
     
     VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
     fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    CHRONO_COMPARE()
-    fragShaderStageInfo.module = output.shader_loader->load(shader::image_frag);
-    CHRONO_COMPARE()
+    fragShaderStageInfo.module = output.shader_loader->load(shader::indirect_draw_component_frag);
     fragShaderStageInfo.pName = "main";
 
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
