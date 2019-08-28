@@ -338,15 +338,15 @@ void draw (toplevel_window<Backend>& toplevel)
   using fastdraw::output::vulkan::from_result;
   using fastdraw::output::vulkan::vulkan_error_code;
   VkSemaphore imageAvailable, renderFinished;
-  imageAvailable = render_thread_create_semaphore (toplevel->window.voutput.device);
-  renderFinished = render_thread_create_semaphore (toplevel->window.voutput.device);
+  imageAvailable = render_thread_create_semaphore (toplevel.window.voutput.device);
+  renderFinished = render_thread_create_semaphore (toplevel.window.voutput.device);
        VkFence executionFinished[2];
        VkFenceCreateInfo fenceInfo = {};
        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-       auto r = from_result (vkCreateFence (toplevel->window.voutput.device, &fenceInfo, nullptr, &executionFinished[0]));
+       auto r = from_result (vkCreateFence (toplevel.window.voutput.device, &fenceInfo, nullptr, &executionFinished[0]));
        if (r != vulkan_error_code::success)
          throw std::system_error(make_error_code(r));
-       r = from_result(vkCreateFence (toplevel->window.voutput.device, &fenceInfo, nullptr, &executionFinished[1]));
+       r = from_result(vkCreateFence (toplevel.window.voutput.device, &fenceInfo, nullptr, &executionFinished[1]));
        if (r != vulkan_error_code::success)
          throw std::system_error(make_error_code(r));
 
@@ -384,7 +384,7 @@ void draw (toplevel_window<Backend>& toplevel)
 
          auto queue_begin = std::chrono::high_resolution_clock::now();
          {
-           ftk::ui::backend::vulkan_queues::lock_graphic_queue lock_queue(toplevel->window.queues);
+           ftk::ui::backend::vulkan_queues::lock_graphic_queue lock_queue(toplevel.window.queues);
 
            auto now = std::chrono::high_resolution_clock::now();
            auto diff = now - queue_begin;
@@ -413,14 +413,14 @@ void draw (toplevel_window<Backend>& toplevel)
            presentInfo.waitSemaphoreCount = 1;
            presentInfo.pWaitSemaphores = waitSemaphores;
 
-           VkSwapchainKHR swapChains[] = {toplevel->window.swapChain};
+           VkSwapchainKHR swapChains[] = {toplevel.window.swapChain};
            presentInfo.swapchainCount = 1;
            presentInfo.pSwapchains = swapChains;
            presentInfo.pImageIndices = &imageIndex;
            presentInfo.pResults = nullptr; // Optional
 
            {
-             ftk::ui::backend::vulkan_queues::lock_presentation_queue lock_queue(toplevel->window.queues);
+             ftk::ui::backend::vulkan_queues::lock_presentation_queue lock_queue(toplevel.window.queues);
          
              using fastdraw::output::vulkan::from_result;
              using fastdraw::output::vulkan::vulkan_error_code;
@@ -449,6 +449,7 @@ void draw (toplevel_window<Backend>& toplevel)
                        << "ms" << std::endl;
            }
 
+         }
 }
 
 } } }
