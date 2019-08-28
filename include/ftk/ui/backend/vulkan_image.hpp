@@ -13,6 +13,7 @@
 #include <ftk/ui/backend/vulkan_submission_pool.hpp>
 
 #include <future>
+#include <filesystem>
 
 namespace ftk { namespace ui { namespace backend {
 
