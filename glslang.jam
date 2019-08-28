@@ -9,15 +9,24 @@ import generators ;
 import toolset ;
 import project ;
 import targets ;
+import scanner ;
+import cpp ;
 
 type.register SPV : spv ;
 type.register SHADER : comp vert frag ;
+
+class glsl-scanner : c-scanner
+{
+}
 
 rule init ( name ? )
 {
   if ! $(.initialized)
   {
     .initialized = true ;
+
+    scanner.register glsl-scanner : include ;
+    type.set-scanner SHADER : glsl-scanner ;
 
     generators.register-standard glslang.compile : SHADER : SPV ;
 
@@ -41,11 +50,11 @@ local rule check-gslangValidator ( )
   .glslangValidator =  [ common.get-invocation-command glslang : glslangValidator : $(.glslangValidator) ] ;
 }
 
-rule glslang ( target : source )
+rule glslang ( target : source : requirements * )
 {
   local project = [ project.current ] ;
 
-  targets.create-typed-target SPV : $(project) : $(target) : $(source) ;
+  targets.create-typed-target SPV : $(project) : $(target) : $(source) : $(requirements) ;
 }
 
 rule compile ( target : source : requirements * )
