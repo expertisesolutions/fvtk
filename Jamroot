@@ -11,7 +11,7 @@ path-constant current-pwd : . ;
 
 rule init-deps ( )
 {
-  local using-conan = [ MATCH ^--use-package-manager=(.*)$ : [ modules.peek : ARGV ] ] ;
+  local using-conan = [ GLOB $(__file__:D) : conanbuildinfo.jam : downcase ] ;
 
   local pkg-config-libraries =
    vulkan
@@ -141,16 +141,6 @@ rule init-deps ( )
     }
   }
   
-  if ! $(using-conan)
-  {
-    local boost = [ project.find boost_program_options : $(current-pwd) ] ;
-    if ! $(boost)
-    {
-      project boost_program_options ;
-      lib boost_program_options : : <name>boost_program_options ;
-    }
-  }
-  
   if ! $(empty)
   {
     local x11 = [ project.find x11 : $(current-pwd) ] ;
@@ -204,7 +194,7 @@ for local file in $(shader_sources)
   local suffix = $(chars[2-]:J="") ;
   local target = $(file:B)_$(suffix) ;
   shader_targets += $(target) ;
-  glslang $(target) : $(file) ;
+  glslang $(target) : $(file) : <include>res/shader/vulkan ;
 }
 
 alias shaders : $(shader_targets) ;
@@ -218,5 +208,6 @@ path-constant res-path : compiled-res ;
 
 alias testsuite :
  [ run tests/text_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 : $(res-path) ]
+ [ run tests/rectangle_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 : $(res-path) ]
  ;
 
