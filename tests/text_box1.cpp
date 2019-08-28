@@ -38,15 +38,24 @@ int main(int argc, char* argv[])
   typedef ftk::ui::backend::vulkan<ftk::ui::backend::uv, ftk::ui::backend::xlib_surface<ftk::ui::backend::uv>> backend_type;
   backend_type backend({&loop});
 
-  ftk::ui::toplevel_window<backend_type> w(backend, res_path);
+  auto vulkan_window = backend.create_window(1280, 1000, res_path);
+  
+  typedef pc::inplace_executor_t executor_type;
+  ftk::ui::backend::vulkan_submission_pool<executor_type>
+    vulkan_submission_pool (vulkan_window.voutput.device
+                            , &vulkan_window.queues
+                            , pc::inplace_executor
+                            , 1 /* thread count */);
+
+  auto empty_image = ftk::ui::backend::load_empty_image_view
+    (vulkan_window.voutput.device, vulkan_window.voutput.physical_device
+     , vulkan_submission_pool).get();
+  
+  ftk::ui::toplevel_window<backend_type&> w(vulkan_window, res_path, empty_image.image_view);
 
   std::cout << "w width " << w.window.voutput.swapChainExtent.width << std::endl;
   
-  // ftk::ui::text_box tb;
-
-  // on_draw (backend, w);
-
-  w.append_component ({10, 10, 200, 200, ftk::ui::rectangle_component{{1.0f, 0.0f, 0.0f, 1.0f}}});
+  w.append_component ({10, 10, 200, 200, ftk::ui::rectangle_component{{255, 0, 0, 255}}});
   draw (w);
   
   uv_run(&loop, UV_RUN_DEFAULT);
