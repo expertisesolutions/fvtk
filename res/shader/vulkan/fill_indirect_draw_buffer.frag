@@ -97,11 +97,11 @@ void main()
             }
           }
 
-          vec2 fragTexCoord = vec2 (floor(gl_FragCoord.x - ii[value].ii_x)/(ii[value].ii_w-1)
-                                    , floor(gl_FragCoord.y - ii[value].ii_y)/(ii[value].ii_h-1));
-          vec4 color = texture(sampler2D(tex[value], samp), fragTexCoord);
-          if (color.a == 1.0f)
-            break;
+          // vec2 fragTexCoord = vec2 (floor(gl_FragCoord.x - ii[value].ii_x)/(ii[value].ii_w-1)
+          //                           , floor(gl_FragCoord.y - ii[value].ii_y)/(ii[value].ii_h-1));
+          // vec4 color = texture(sampler2D(tex[value], samp), fragTexCoord);
+          // if (color.a == 1.0f)
+          //   break;
         }
       }
     }
