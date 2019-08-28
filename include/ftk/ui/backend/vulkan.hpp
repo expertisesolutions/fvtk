@@ -80,8 +80,6 @@ struct vulkan : WindowingBase
   window create_window (int width, int height, std::filesystem::path resource_path) const;
 };
 
-using any = vulkan<>;
-    
 } } }
 
 #endif
