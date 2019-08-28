@@ -25,6 +25,11 @@ struct color_channel_traits<float>
     return 1.0f;
   }
 
+  constexpr static float parametric_ratio(float n, float whole, float whole2)
+  {
+    assert (whole == whole2);
+    return n;
+  }
   constexpr static float ratio(float n, float whole)
   {
     return n/whole;
@@ -55,7 +60,7 @@ struct color_channel_traits
     return (max/1.0f)*(nn/whole);
   }
 
-  constexpr static float ratio (T n, T whole)
+  constexpr static float ratio (T n, T whole, float max = color_channel_traits<float>::max())
   {
     return ((float)n)/whole;
   }
