@@ -53,8 +53,9 @@ struct descriptor_fixed_array
     : device (nullptr), descriptor_pool (nullptr), current_size (0)
   {
   }
-  descriptor_fixed_array (VkDevice device, VkDescriptorSetLayout set_layout, VkDescriptorPoolCreateFlags flags = 0)
-    : device (device), current_size (0)
+  descriptor_fixed_array (VkDevice device, VkDescriptorSetLayout set_layout
+                          , std::optional<info_type> empty_info = {}, VkDescriptorPoolCreateFlags flags = 0)
+    : device (device), current_size (0), empty_info (empty_info)
   {
     using fastdraw::output::vulkan::from_result;
     using fastdraw::output::vulkan::vulkan_error_code;
@@ -85,6 +86,22 @@ struct descriptor_fixed_array
     if (r != vulkan_error_code::success)
       throw std::system_error (make_error_code(r));
     std::cout << "allocated descriptor" << std::endl;
+
+    if (empty_info)
+    {
+      VkWriteDescriptorSet write_set = {};
+      write_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      write_set.dstSet = this->set;
+      write_set.dstBinding = 0;
+      write_set.descriptorType = DescriptorType;
+      write_set.dstArrayElement = 0;
+      std::array <info_type, Size> types;
+      for (auto&& t : types)
+        t = *empty_info;
+      write_set.descriptorCount = Size;
+      descriptor_type_traits::update_info (write_set, &types[0]);
+      vkUpdateDescriptorSets (device, 1, &write_set, 0, nullptr);
+    }
   }
 
   void replace (int index, info_type type)
@@ -163,6 +180,7 @@ struct descriptor_fixed_array
   VkDescriptorPool descriptor_pool;
   VkDescriptorSet set;
   std::size_t current_size;
+  std::optional<info_type> empty_info;
 };
       
 } } }

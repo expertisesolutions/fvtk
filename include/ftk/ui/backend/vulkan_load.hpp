@@ -42,7 +42,6 @@ struct vulkan_buffer_token
     bool loaded;
     VkImage vulkan_image;
     VkImageView vulkan_image_view;
-    //VkDescriptorSet descriptor;
     U user_value;
     
     buffer (void* pointer, std::int32_t width, std::int32_t height, std::uint32_t stride, U user_value)
@@ -145,13 +144,16 @@ pc::future<typename vulkan_image_loader<Executor>::output_image_type> vulkan_ima
 }
 
 template <typename Executor>
-pc::future<typename vulkan_image_loader<Executor>::output_image_type> vulkan_image_loader<Executor>
-  ::load (VkBuffer buffer, int32_t width, int32_t height) const
+pc::future<typename vulkan_image_loader<Executor>::output_image_type> 
+vulkan_async_load (VkDevice device, VkPhysicalDevice physical_device
+                   , ftk::ui::backend::vulkan_submission_pool<Executor>& graphic_thread_pool, VkBuffer buffer
+                   , int32_t width, int32_t height)
 {
+  using output_image_type = typename vulkan_image_loader<Executor>::output_image_type;
   return
-  graphic_thread_pool->run
+  graphic_thread_pool.run
     (
-     [buffer, width, height, this] (VkCommandBuffer command_buffer, unsigned int, auto submitted)
+     [buffer, width, height, device, physical_device] (VkCommandBuffer command_buffer, unsigned int, auto submitted)
        -> pc::future<output_image_type>
      {
        using fastdraw::output::vulkan::from_result;
@@ -311,7 +313,7 @@ pc::future<typename vulkan_image_loader<Executor>::output_image_type> vulkan_ima
 
        return submitted.then
          ([device = device, buffer, vulkan_image, vulkan_image_view] (auto&&)
-           -> vulkan_image_loader::output_image_type
+           -> output_image_type
           {
             std::cout << __FILE__ << ":" << __LINE__ << std::endl;
             vkDestroyBuffer(device, buffer, nullptr);
@@ -321,6 +323,13 @@ pc::future<typename vulkan_image_loader<Executor>::output_image_type> vulkan_ima
             return {vulkan_image, vulkan_image_view};
           });
      });
+}
+
+template <typename Executor>
+pc::future<typename vulkan_image_loader<Executor>::output_image_type> vulkan_image_loader<Executor>
+  ::load (VkBuffer buffer, int32_t width, int32_t height) const
+{
+  return backend::vulkan_async_load (device, physical_device, *graphic_thread_pool, buffer, width, height);
 }
 
 template <typename Executor>
@@ -349,6 +358,25 @@ pc::future<typename vulkan_image_loader<Executor>::output_image_type> vulkan_ima
   vkUnmapMemory(device, staging_pair.second);
 
   return load (staging_pair.first, width, height);
+}
+
+template <typename Executor>
+pc::future<typename vulkan_image_loader<Executor>::output_image_type>
+load_empty_image_view (VkDevice device, VkPhysicalDevice physical_device
+                       , ftk::ui::backend::vulkan_submission_pool<Executor>& graphic_thread_pool)
+{
+  using fastdraw::output::vulkan::from_result;
+  using fastdraw::output::vulkan::vulkan_error_code;
+
+  std::cout << "running in a thread loop!" << std::endl;
+
+  uint32_t src_size = sizeof(uint32_t);
+  uint32_t buffer_size = src_size;
+
+  auto staging_pair = fastdraw::output::vulkan::create_buffer
+    (device, buffer_size, physical_device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+
+  return vulkan_async_load (device, physical_device, graphic_thread_pool, staging_pair.first, 1, 1);
 }
 
 } } }

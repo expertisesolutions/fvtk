@@ -11,13 +11,11 @@
 #define FTK_FTK_UI_TOPLEVEL_WINDOW_HPP
 
 #include <ftk/ui/backend/vulkan_vertex_buffer.hpp>
-// #include <ftk/ui/backend/vulkan_storage_zindex.hpp>
-// #include <ftk/ui/backend/vulkan_storage_zindex_array.hpp>
-// #include <ftk/ui/backend/vulkan_storage_vector.hpp>
 #include <ftk/ui/backend/vulkan_command_buffer_cache.hpp>
 #include <ftk/ui/backend/vulkan_storage_buffer_allocator.hpp>
 #include <ftk/ui/backend/descriptor_fixed_array.hpp>
 #include <ftk/ui/backend/vulkan_queues.hpp>
+#include <ftk/ui/backend/vulkan_load.hpp>
 
 #include <fastdraw/output/vulkan/vulkan_draw_info.hpp>
 #include <fastdraw/output/vulkan/add_image.hpp>
@@ -28,20 +26,11 @@
 #include <variant>
 #include <mutex>
 #include <list>
+#include <type_traits>
 
 namespace ftk { namespace ui {
 
 namespace detail {
-
-// template <>
-// struct zindex_traits<std::uint32_t>
-// {
-//   static constexpr std::uint32_t zero () { return 0u; }
-//   static constexpr std::uint32_t next (std::uint32_t v)
-//   {
-//     return v+1;
-//   }
-// };
 
 VkSampler render_thread_create_sampler (VkDevice device)
 {
@@ -111,7 +100,7 @@ struct button_component
 };
 struct rectangle_component
 {
-  float color[4];
+  fastdraw::color::color_premultiplied_rgba<uint8_t> color;
 };
     
 struct toplevel_window_component
@@ -127,16 +116,49 @@ struct toplevel_window_component
 template <typename Backend>
 struct toplevel_window
 {
-  toplevel_window (Backend& backend, std::filesystem::path resource_path)
+  static constexpr const bool backend_is_reference = std::is_reference<Backend>::type::value;
+  using backend_type = typename std::conditional
+    <backend_is_reference
+     , Backend
+     , typename std::remove_reference<Backend>::type>::type;
+  using backend_window_type = typename std::conditional
+    <backend_is_reference
+     , typename std::add_lvalue_reference<typename std::remove_reference<Backend>::type::window>::type
+     , typename std::remove_reference<Backend>::type::window>::type;
+  
+  toplevel_window (Backend& backend, std::filesystem::path resource_path
+                   , VkImageView empty_image_view)
     : window (backend.create_window(1280, 1000, resource_path))
     , image_pipeline (fastdraw::output::vulkan::create_image_pipeline (window.voutput, 0))
-    , texture_descriptors (window.voutput.device, image_pipeline.descriptorSetLayouts[0])
+    , texture_descriptors (window.voutput.device, image_pipeline.descriptorSetLayouts[0]
+                           , VkDescriptorImageInfo
+                            {nullptr, empty_image_view, VK_IMAGE_LAYOUT_GENERAL})
     , sampler_descriptors (window.voutput.device, image_pipeline.descriptorSetLayouts[1])
     , buffer_allocator (window.voutput.device, window.voutput.physical_device
-                        //, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
                         , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
                         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                         | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+  {
+    initialize_buffers ();
+  }
+
+  toplevel_window (backend_window_type& window, std::filesystem::path resource_path
+                   , VkImageView empty_image_view)
+    : window (window)
+    , image_pipeline (fastdraw::output::vulkan::create_image_pipeline (window.voutput, 0))
+    , texture_descriptors (window.voutput.device, image_pipeline.descriptorSetLayouts[0]
+                           , VkDescriptorImageInfo
+                            {nullptr, empty_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL})
+    , sampler_descriptors (window.voutput.device, image_pipeline.descriptorSetLayouts[1])
+    , buffer_allocator (window.voutput.device, window.voutput.physical_device
+                        , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+                        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+  {
+    initialize_buffers ();
+  }
+  
+  void initialize_buffers ()
   {
     using fastdraw::output::vulkan::vulkan_error_code;
     using fastdraw::output::vulkan::from_result;
@@ -201,6 +223,15 @@ struct toplevel_window
                            , static_cast<uint32_t>(y)
                            , static_cast<uint32_t>(width)
                            , static_cast<uint32_t>(height), 1, 0, get_component_type (component.component_data)};
+
+    if (auto p = std::get_if<rectangle_component>(&component.component_data))
+    {
+      fastdraw::color::color_premultiplied_rgba<float> color {0.0f, 0.0f, 0.0f, 0.0f};
+      color = color.blend_with_src (p->color);
+      component_info_ptr->component_data
+        = rectangle_data {color.red(), color.green(), color.blue(), color.alpha()};
+    }
+
     buffer_allocator.unmap (component_ssbo_buffer);
 
     if (image_component* p = std::get_if<image_component>(&component.component_data))
@@ -267,7 +298,7 @@ struct toplevel_window
                              , static_cast<uint32_t>(component->x)
                              , static_cast<uint32_t>(component->y)
                              , static_cast<uint32_t>(component->width)
-                             , static_cast<uint32_t>(component->height), 1, 0, 0, get_component_type (component->component_data)};
+                             , static_cast<uint32_t>(component->height), 1, 0, get_component_type (component->component_data)};
       buffer_allocator.unmap (component_ssbo_buffer);
     }
 
@@ -380,7 +411,7 @@ struct toplevel_window
   };
 
   std::list<toplevel_window_component> components;
-  mutable typename Backend::window window;
+  backend_window_type window;
   fastdraw::output::vulkan::vulkan_draw_info image_pipeline;
   vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4096> texture_descriptors;
   vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLER, 1> sampler_descriptors;
