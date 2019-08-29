@@ -7,9 +7,9 @@
 // See http://www.boost.org/libs/foreach for documentation
 //
 
+#include <ftk/ui/backend/uv/uv_loop.hpp>
 #include <ftk/ui/toplevel_window.hpp>
 #include <ftk/ui/text_box.hpp>
-#include <uv.h>
 
 #include <ftk/ui/backend/vulkan.hpp>
 #include <ftk/ui/backend/x11_base.hpp>
