@@ -208,7 +208,7 @@ path-constant res-path : compiled-res ;
 path-constant test-res-path : tests/res ;
 
 alias testsuite :
- [ run tests/image_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 /libpng//libpng /libjpeg//libjpeg : $(res-path) $(test-res-path) ]
- [ run tests/rectangle_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 : $(res-path) ]
+ [ run tests/image_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 /libpng//libpng /libjpeg//libjpeg : $(res-path) $(test-res-path) : : <dependency>compiled-res ]
+ [ run tests/rectangle_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 : $(res-path) : : <dependency>compiled-res ]
  ;
 
