@@ -14,7 +14,7 @@
 #include <vulkan/vulkan_xlib.h>
 #include <vulkan/vulkan_core.h>
 
-#include <ftk/ui/backend/vulkan_queues.hpp>
+#include <ftk/ui/backend/vulkan/queues.hpp>
 #include <ftk/ui/backend/khr_display.hpp>
 #include <ftk/ui/backend/xlib_surface.hpp>
 

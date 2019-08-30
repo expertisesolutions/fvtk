@@ -7,26 +7,39 @@
 // See http://www.boost.org/libs/foreach for documentation
 //
 
-#ifndef FTK_FTK_UI_BACKEND_VULKAN_VERTEX_BUFFER_HPP
-#define FTK_FTK_UI_BACKEND_VULKAN_VERTEX_BUFFER_HPP
+#ifndef FTK_FTK_UI_BACKEND_VULKAN_STORAGE_ZINDEX_ARRAY_HPP
+#define FTK_FTK_UI_BACKEND_VULKAN_STORAGE_ZINDEX_ARRAY_HPP
 
-#include <fastdraw/output/vulkan/error.hpp>
+namespace ftk { namespace ui { namespace backend { namespace vulkan { namespace detail {
 
-#include <vulkan/vulkan.h>
+template <typename Z, typename Enable = void>
+struct zindex_traits;
 
-#include <vector>
-
-namespace ftk { namespace ui {
-
-template <typename...T>
-struct vertex_buffer
+}
+      
+template <typename Z, std::size_t MinimumSizePerBuffer = 100 /* to avoid relocations */>
+struct storage_zindex_array
 {
-  constexpr static const unsigned int elements_size = (sizeof (T) + ...);
+  typedef storage_zindex_array<Z, MinimumSizePerBuffer> self_type;
   
-  vertex_buffer (VkDevice device, VkPhysicalDevice physical_device)
-    : map_pointer (nullptr)
+  constexpr static const unsigned int elements_size = sizeof(Z);
+
+  typedef detail::zindex_traits<Z> traits;
+
+  struct zindex_info
+  {
+    Z zindex;
+    unsigned int index;
+    unsigned int buffer_offset;
+  };
+  
+  storage_zindex_array (VkDevice device, VkPhysicalDevice physical_device)
+    : array_size_per_element (MinimumSizePerBuffer)
+    , map_pointer (nullptr)
     , allocated_ (0u), device (device), physical_device (physical_device)
   {
+    zindexes.push_back ({traits::zero(), true});
+    reserve (std::max(zindexes.size(), MinimumSizePerBuffer));
   }
 
   void grow (unsigned int to)
@@ -37,6 +50,7 @@ struct vertex_buffer
     std::cout << "grow to at least to " << to << std::endl;
     if (allocated_ != 0)
     {
+      unmap();
       vkDestroyBuffer (device, buffer, nullptr);
       vkFreeMemory (device, memory, nullptr);
     }
@@ -58,7 +72,7 @@ struct vertex_buffer
       if ((mem_requirements.memoryTypeBits & (1 << i))
           && ((mem_properties.memoryTypes[i].propertyFlags
                & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)))
-               ==  (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+              ==  (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
       {
         info.memoryTypeIndex = i;
         break;
@@ -74,8 +88,6 @@ struct vertex_buffer
     vkBindBufferMemory(device, buffer, memory, 0);
 
     map(to);
-    if (!cpu_memory.empty())
-      std::memcpy (map_pointer, &cpu_memory[0], cpu_memory.size() * elements_size);
     allocated_ = to;
   }
 
@@ -96,40 +108,33 @@ struct vertex_buffer
     return allocated_ / elements_size;
   }
   
-  // void reserve (unsigned int size)
-  // {
-  //   if (row_size < size)
-  //   {
-  //     grow (size);
-  //     unmap();
-  //   }
-  // }
-
-  void replace (unsigned int offset, T... ts)
+  void reserve (unsigned int size)
   {
-    std::cout << "replacing at offset " << offset << std::endl;
-    map (allocated_);
-    std::tuple <T...> t {ts...};
-    std::memcpy (static_cast<char*>(map_pointer) + offset * elements_size, &t, elements_size);
-    cpu_memory[offset] = t;
-    unmap ();
+    if (allocated_ < size * array_size_per_element)
+      grow (size * array_size_per_element);
   }
 
-  unsigned int push_back (T... ts) // returns offset
+  // void replace (unsigned int offset, Z)
+  // {
+  //   std::cout << "replacing at offset " << offset << std::endl;
+  //   map (allocated_);
+  //   std::tuple <T...> t {ts...};
+  //   std::memcpy (map_pointer + offset * elements_size, &t, elements_size);
+  //   cpu_memory[offset] = t;
+  //   unmap ();
+  // }
+
+  zindex_info create_new_zindex () // returns offset
   {
-    std::cout << "elements_size " << elements_size << std::endl;
-    auto offset = cpu_memory.size() * elements_size;
-    std::cout << "offset " << offset << " allocated_ " << allocated_ << std::endl;
-    if (allocated_ == cpu_memory.size()*elements_size)
-      grow((allocated_ + elements_size) << 1);
-    else
-      map (allocated_);
-    std::tuple <T...> t {ts...};
-    std::memcpy (static_cast<char*>(map_pointer) + offset, &t, elements_size);
-    cpu_memory.push_back (t);
-    std::cout << "new size " << cpu_memory.size() << std::endl;
-    unmap ();
-    return offset;
+    assert (!zindexes.empty());
+    auto index = zindexes.size();
+    zindexes.push_back ({traits::next(zindexes[index - 1].first), true});
+    std::cout << "creating new zindex next from " << zindexes[index - 1].first
+              << " of value " << zindexes[index].first << std::endl;
+
+    reserve (zindexes.size());
+    
+    return {zindexes.back().first, index, index * array_size_per_element};
   }
 
   void create_buffer (unsigned int size)
@@ -142,7 +147,7 @@ struct vertex_buffer
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.size = size;
-    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     auto r = from_result(vkCreateBuffer(device, &bufferInfo, nullptr, &buffer));
@@ -152,13 +157,47 @@ struct vertex_buffer
   
   VkBuffer get_buffer ()
   {
-    assert (!cpu_memory.empty());
     return buffer;
   }
 
-  unsigned int size() const { return cpu_memory.size(); }
+  struct value_type
+  {
+    typedef Z const* iterator;
+    typedef Z const* const_iterator;
+    const_iterator begin() const
+    {
+      return first;
+    }
+    const_iterator end() const
+    {
+      return last;
+    }
 
-  std::vector<std::tuple<T...>> cpu_memory;
+    const_iterator first, last;
+  };
+
+  struct iterator
+  {
+    std::vector<Z>::const_iterator z_first, z_last;
+    void* map_pointer;
+    std::size_t array_size_per_element;
+
+    typedef self_type::value_type value_type;
+    typedef std::ptrdiff_t difference_type;
+    typedef value_type* pointer;
+    typedef value_type reference;
+    typedef std::random_access_iterator_tag iterator_category;
+  };
+
+  unsigned int size() const { return zindexes.size(); }
+
+  zindex_info get_zindex_info (std::size_t index) const
+  {
+    return {zindexes[index].first, index, index * array_size_per_element};
+  }
+
+  std::size_t array_size_per_element;
+  std::vector<std::pair<Z, bool>> zindexes;
   void* map_pointer;
   unsigned int allocated_;
   VkDevice device;
@@ -167,6 +206,6 @@ struct vertex_buffer
   VkDeviceMemory memory;
 };
     
-} }
+} } } }
 
 #endif

@@ -13,7 +13,7 @@
 #include <list>
 #include <map>
 
-namespace ftk { namespace ui { namespace vulkan {
+namespace ftk { namespace ui { namespace backend { namespace vulkan {
 
 struct memory_device
 {
@@ -341,6 +341,6 @@ struct buffer_allocator
   VkMemoryPropertyFlags memory_flags;
 };
     
-} } }
+} } } }
 
 #endif

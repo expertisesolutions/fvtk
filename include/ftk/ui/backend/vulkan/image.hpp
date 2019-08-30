@@ -10,12 +10,12 @@
 #ifndef FTK_FTK_BACKEND_VULKAN_IMAGE_HPP
 #define FTK_FTK_BACKEND_VULKAN_IMAGE_HPP
 
-#include <ftk/ui/backend/vulkan_submission_pool.hpp>
+#include <ftk/ui/backend/vulkan/submission_pool.hpp>
 
 #include <future>
 #include <filesystem>
 
-namespace ftk { namespace ui { namespace backend {
+namespace ftk { namespace ui { namespace backend { namespace vulkan {
 
 struct vulkan_image
 {
@@ -24,12 +24,12 @@ struct vulkan_image
 };
 
 template <typename Executor>
-struct vulkan_image_loader
+struct image_loader
 {
   VkDevice device;
   VkPhysicalDevice physical_device;
 
-  ftk::ui::backend::vulkan_submission_pool<Executor>* graphic_thread_pool;
+  ftk::ui::backend::vulkan::submission_pool<Executor>* graphic_thread_pool;
 
   typedef vulkan_image output_image_type;
 
@@ -40,7 +40,7 @@ struct vulkan_image_loader
   pc::future<output_image_type> load (VkBuffer, int32_t width, int32_t height) const;
 };
       
-} } }
+} } } }
       
 #endif
 

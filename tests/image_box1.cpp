@@ -15,9 +15,9 @@
 #include <ftk/ui/backend/x11_base.hpp>
 #include <ftk/ui/backend/uv/uv_loop.hpp>
 #include <ftk/ui/backend/uv/timer.hpp>
-#include <ftk/ui/backend/vulkan_draw.hpp>
+#include <ftk/ui/backend/vulkan/draw.hpp>
 #include <ftk/ui/backend/vulkan.ipp>
-#include <ftk/ui/backend/vulkan_image.hpp>
+#include <ftk/ui/backend/vulkan/image.hpp>
 
 #include <fastdraw/image_loader/extension_loader.hpp>
 

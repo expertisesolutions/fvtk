@@ -14,19 +14,19 @@
 #include <future>
 #include <condition_variable>
 
-#include <ftk/ui/backend/vulkan_queues.hpp>
+#include <ftk/ui/backend/vulkan/queues.hpp>
 
 #include <portable_concurrency/future>
 
-namespace ftk { namespace ui { namespace backend {
+namespace ftk { namespace ui { namespace backend { namespace vulkan {
 
 namespace pc = portable_concurrency;
       
 template <typename Executor>
-struct vulkan_submission_pool
+struct submission_pool
 {
   VkDevice device;
-  vulkan_queues* queues;
+  struct queues* queues;
   Executor executor;
 
   struct queue
@@ -80,7 +80,7 @@ struct vulkan_submission_pool
     
   // }
 
-  vulkan_submission_pool (VkDevice device, struct vulkan_queues* queues
+  submission_pool (VkDevice device, struct queues* queues
                           , Executor executor
                           , unsigned int max_threads = 12
                           , unsigned int command_buffers_per_queue = 3)
@@ -95,7 +95,7 @@ struct vulkan_submission_pool
     unsigned int max_queues = 0;
 
     auto family_initializer
-      = [this, device, &max_queues] (std::vector<vulkan_queues::family>const& from)
+      = [this, device, &max_queues] (std::vector<queues::family>const& from)
       {
        for (auto&& family : from)
        {
@@ -240,7 +240,7 @@ struct vulkan_submission_pool
 
          if (winner)
          {
-           vulkan_queues::lock_graphic_queue queue (*this->queues, family_id);
+           queues::lock_graphic_queue queue (*this->queues, family_id);
            std::unique_lock<std::mutex> lock (families[family_id].submission_mutex);
            auto submission_buffers = std::move(families[family_id].submission_buffers);
            families[family_id].submission_buffers.clear();
@@ -285,7 +285,7 @@ struct vulkan_submission_pool
   }
 };
 
-} } }
+} } } }
 
 #endif
 

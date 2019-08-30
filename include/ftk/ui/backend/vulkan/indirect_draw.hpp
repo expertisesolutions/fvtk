@@ -10,7 +10,7 @@
 #ifndef FTK_UI_BACKEND_VULKAN_INDIRECT_DRAW_HPP
 #define FTK_UI_BACKEND_VULKAN_INDIRECT_DRAW_HPP
 
-namespace ftk { namespace ui { namespace vulkan {
+namespace ftk { namespace ui { namespace backend { namespace vulkan {
 
 template <typename WindowingBase>
 std::array<VkDescriptorSetLayout, 3> indirect_draw_descriptor_set
@@ -541,6 +541,6 @@ create_indirect_draw_buffer_filler_pipeline
   // return {};
 }
 
-} } }
+} } } }
 
 #endif

@@ -10,7 +10,7 @@
 #ifndef FTK_FTK_UI_BACKEND_VULKAN_RENDERPASS_HPP
 #define FTK_FTK_UI_BACKEND_VULKAN_RENDERPASS_HPP
 
-namespace ftk { namespace ui {
+namespace ftk { namespace ui { namespace backend { namespace vulkan {
 
 template <typename Backend>
 VkRenderPass toplevel_window<Backend>::create_compatible_render_pass ()
@@ -79,6 +79,6 @@ VkRenderPass toplevel_window<Backend>::create_compatible_render_pass ()
   return render_pass;
 }
 
-} }
+} } } }
     
 #endif

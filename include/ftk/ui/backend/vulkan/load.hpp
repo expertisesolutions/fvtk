@@ -11,7 +11,7 @@
 #define FTK_FTK_UI_BACKEND_VULKAN_LOAD_HPP
 
 #include <ftk/ui/backend/vulkan_fwd.hpp>
-#include <ftk/ui/backend/vulkan_image.hpp>
+#include <ftk/ui/backend/vulkan/image.hpp>
 #include <ftk/ui/ui_fwd.hpp>
 
 #include <fastdraw/output/vulkan/vulkan_draw.hpp>
@@ -28,7 +28,7 @@
 #define CHRONO_COMPARE()  {auto after = std::chrono::high_resolution_clock::now(); auto diff = after - before; if (diff > std::chrono::microseconds(100)) { std::cout << "Passed " << std::chrono::duration_cast<std::chrono::microseconds>(diff).count() << " at " <<  __FILE__ << ":" << __LINE__ << std::endl; before = after;} }
 #define CHRONO_COMPARE_FORCE()  {auto after = std::chrono::high_resolution_clock::now(); auto diff = after - before; std::cout << "Passed " << std::chrono::duration_cast<std::chrono::microseconds>(diff).count() << " at " <<  __FILE__ << ":" << __LINE__ << std::endl; before = after; }
 
-namespace ftk { namespace ui { namespace backend {
+namespace ftk { namespace ui { namespace backend { namespace vulkan {
 
 template <typename U>
 struct vulkan_buffer_token
@@ -94,7 +94,7 @@ bool operator>=(vulkan_buffer_token<U> lhs, vulkan_buffer_token<U> rhs)
 
 template <typename Executor>
 template <typename I>
-pc::future<typename vulkan_image_loader<Executor>::output_image_type> vulkan_image_loader<Executor>
+pc::future<typename image_loader<Executor>::output_image_type> image_loader<Executor>
   ::load (std::filesystem::path path, I image_loader) const
 {
   using fastdraw::output::vulkan::from_result;
@@ -144,12 +144,12 @@ pc::future<typename vulkan_image_loader<Executor>::output_image_type> vulkan_ima
 }
 
 template <typename Executor>
-pc::future<typename vulkan_image_loader<Executor>::output_image_type> 
+pc::future<typename image_loader<Executor>::output_image_type> 
 vulkan_async_load (VkDevice device, VkPhysicalDevice physical_device
-                   , ftk::ui::backend::vulkan_submission_pool<Executor>& graphic_thread_pool, VkBuffer buffer
+                   , submission_pool<Executor>& graphic_thread_pool, VkBuffer buffer
                    , int32_t width, int32_t height)
 {
-  using output_image_type = typename vulkan_image_loader<Executor>::output_image_type;
+  using output_image_type = typename image_loader<Executor>::output_image_type;
   return
   graphic_thread_pool.run
     (
@@ -326,14 +326,14 @@ vulkan_async_load (VkDevice device, VkPhysicalDevice physical_device
 }
 
 template <typename Executor>
-pc::future<typename vulkan_image_loader<Executor>::output_image_type> vulkan_image_loader<Executor>
+pc::future<typename image_loader<Executor>::output_image_type> image_loader<Executor>
   ::load (VkBuffer buffer, int32_t width, int32_t height) const
 {
   return backend::vulkan_async_load (device, physical_device, *graphic_thread_pool, buffer, width, height);
 }
 
 template <typename Executor>
-pc::future<typename vulkan_image_loader<Executor>::output_image_type> vulkan_image_loader<Executor>
+pc::future<typename image_loader<Executor>::output_image_type> image_loader<Executor>
   ::load (const void* buffer, int32_t width, int32_t height, uint32_t stride) const
 {
   using fastdraw::output::vulkan::from_result;
@@ -361,9 +361,9 @@ pc::future<typename vulkan_image_loader<Executor>::output_image_type> vulkan_ima
 }
 
 template <typename Executor>
-pc::future<typename vulkan_image_loader<Executor>::output_image_type>
+pc::future<typename image_loader<Executor>::output_image_type>
 load_empty_image_view (VkDevice device, VkPhysicalDevice physical_device
-                       , ftk::ui::backend::vulkan_submission_pool<Executor>& graphic_thread_pool)
+                       , submission_pool<Executor>& graphic_thread_pool)
 {
   using fastdraw::output::vulkan::from_result;
   using fastdraw::output::vulkan::vulkan_error_code;
@@ -379,6 +379,6 @@ load_empty_image_view (VkDevice device, VkPhysicalDevice physical_device
   return vulkan_async_load (device, physical_device, graphic_thread_pool, staging_pair.first, 1, 1);
 }
 
-} } }
+} } } }
 
 #endif

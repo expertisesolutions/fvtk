@@ -15,7 +15,7 @@
 #include <memory>
 #include <algorithm>
 
-namespace ftk { namespace ui { namespace backend {
+namespace ftk { namespace ui { namespace backend { namespace vulkan {
 
 struct queue
 {
@@ -30,7 +30,7 @@ struct family_ref
 
 inline
 std::array<std::vector<family_ref>, 3>
-vulkan_queues_separate_queue_families (VkDevice device, VkPhysicalDevice physical_device, VkSurfaceKHR surface)
+queues_separate_queue_families (VkDevice device, VkPhysicalDevice physical_device, VkSurfaceKHR surface)
 {
   uint32_t queue_family_count = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
@@ -63,7 +63,7 @@ vulkan_queues_separate_queue_families (VkDevice device, VkPhysicalDevice physica
       
 inline
 std::array<std::vector<queue>, 3>
-vulkan_queues_create_queues (VkDevice device, VkPhysicalDevice physical_device, VkSurfaceKHR surface)
+queues_create_queues (VkDevice device, VkPhysicalDevice physical_device, VkSurfaceKHR surface)
 {
   uint32_t queue_family_count = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
@@ -108,7 +108,7 @@ vulkan_queues_create_queues (VkDevice device, VkPhysicalDevice physical_device, 
 }
 
 std::pair<std::vector<VkDeviceQueueCreateInfo>
-          , std::unique_ptr<float[]>> vulkan_queues_create_queue_create_info (VkPhysicalDevice physical_device, VkSurfaceKHR surface)
+          , std::unique_ptr<float[]>> queues_create_queue_create_info (VkPhysicalDevice physical_device, VkSurfaceKHR surface)
 {
   uint32_t queue_family_count = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
@@ -156,7 +156,7 @@ std::pair<std::vector<VkDeviceQueueCreateInfo>
   return {r, std::move(priorities)};
 }
 
-struct vulkan_queues
+struct queues
 {
   struct family
   {
@@ -174,20 +174,20 @@ struct vulkan_queues
     , global_shared_families;
   std::vector<swapchain> swapchains;
   
-  vulkan_queues (vulkan_queues const&) = delete;
-  vulkan_queues (vulkan_queues&&) = default;
+  queues (queues const&) = delete;
+  queues (queues&&) = default;
 
-  vulkan_queues& operator= (vulkan_queues const&) = delete;
-  vulkan_queues& operator= (vulkan_queues&&) = default;
+  queues& operator= (queues const&) = delete;
+  queues& operator= (queues&&) = default;
   
-  vulkan_queues () {}
+  queues () {}
 
   void push_back_swapchain (swapchain s)
   {
     swapchains.push_back(std::move(s));
   }
   
-  vulkan_queues (std::vector<queue> graphic_queues
+  queues (std::vector<queue> graphic_queues
                  , std::vector<queue> presentation_queues
                  , std::vector<queue> shared_queues)
   {
@@ -237,7 +237,7 @@ struct vulkan_queues
     Derived& get_derived() { return static_cast<Derived&>(*this); }
     Derived const& get_derived() const { return static_cast<Derived const&>(*this); }
 
-    bool search_queue (vulkan_queues& queues)
+    bool search_queue (queues& queues)
     {
       for (queue_index = 0; queue_index != family_ptr->queues.size(); ++queue_index)
         if (family_ptr->in_use[queue_index].test_and_set () == false /* old value */)
@@ -245,7 +245,7 @@ struct vulkan_queues
       return false;
     }
 
-    bool search_family (vulkan_queues& queues, std::vector<family>::iterator first
+    bool search_family (queues& queues, std::vector<family>::iterator first
                         , std::vector<family>::iterator last)
     {
       for (;first != last; ++first)
@@ -257,7 +257,7 @@ struct vulkan_queues
       return false;
     }
 
-    bool search_specific_family (vulkan_queues& queues, unsigned int family)
+    bool search_specific_family (queues& queues, unsigned int family)
     {
       auto last = get_derived().get_main_families(queues).end();
       auto iterator = std::find_if (get_derived().get_main_families(queues).begin(), last
@@ -281,7 +281,7 @@ struct vulkan_queues
     {
     }
     
-    lock_queue_base(vulkan_queues& queues)
+    lock_queue_base(queues& queues)
       : queue_index(0)
     {
     again:
@@ -294,7 +294,7 @@ struct vulkan_queues
       }
     }
 
-    lock_queue_base(vulkan_queues& queues, unsigned int family)
+    lock_queue_base(queues& queues, unsigned int family)
       : queue_index (0)
     {
     again:
@@ -318,7 +318,7 @@ struct vulkan_queues
 
   struct lock_graphic_queue : lock_queue_base<lock_graphic_queue>
   {
-    std::vector<family>& get_main_families (vulkan_queues& queues) const { return queues.global_graphic_families; }
+    std::vector<family>& get_main_families (queues& queues) const { return queues.global_graphic_families; }
 
     typedef lock_queue_base<lock_graphic_queue> base_t;
     using base_t::base_t;
@@ -326,7 +326,7 @@ struct vulkan_queues
 
   struct lock_presentation_queue : lock_queue_base<lock_presentation_queue>
   {
-    std::vector<family>& get_main_families (vulkan_queues& queues) const { return queues.global_presentation_families; }
+    std::vector<family>& get_main_families (queues& queues) const { return queues.global_presentation_families; }
     typedef lock_queue_base<lock_presentation_queue> base_t;
     using base_t::base_t;
   };
@@ -339,7 +339,7 @@ struct vulkan_queues
     Derived& get_derived() { return static_cast<Derived&>(*this); }
     Derived const& get_derived() const { return static_cast<Derived&>(*this); }
 
-    lock_swapchain_queue (vulkan_queues& queues, unsigned int swapchain_index)
+    lock_swapchain_queue (queues& queues, unsigned int swapchain_index)
       : base_t {}
     {
       swapchain& sw = swapchains[swapchain_index];
@@ -363,7 +363,7 @@ struct vulkan_queues
 
   struct lock_graphic_swapchain_queue : lock_swapchain_queue<lock_graphic_swapchain_queue>
   {
-    std::vector<family>& get_main_families (vulkan_queues& queues) const { return queues.global_graphic_families; }
+    std::vector<family>& get_main_families (queues& queues) const { return queues.global_graphic_families; }
     std::vector<std::variant<family, family_ref>>& get_swapchain_families (swapchain& sw) const { return sw.graphic_families; }
 
     using base_t = lock_swapchain_queue<lock_graphic_swapchain_queue>;
@@ -372,6 +372,6 @@ struct vulkan_queues
   
 };
       
-} } }
+} } } }
 
 #endif

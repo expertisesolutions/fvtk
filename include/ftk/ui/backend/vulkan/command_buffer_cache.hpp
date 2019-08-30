@@ -10,7 +10,7 @@
 #ifndef FTK_FTK_UI_BACKEND_VULKAN_COMMAND_BUFFER_CACHE_HPP
 #define FTK_FTK_UI_BACKEND_VULKAN_COMMAND_BUFFER_CACHE_HPP
 
-namespace ftk { namespace ui {
+namespace ftk { namespace ui { namespace backend { namespace vulkan {
 
 template <typename PipelineInfo>
 VkCommandBuffer create_command_buffer (VkCommandPool pool
@@ -154,6 +154,6 @@ VkCommandBuffer create_command_buffer (VkCommandPool pool
   return commandBuffer;
 }
     
-} }
+} } } }
 
 #endif

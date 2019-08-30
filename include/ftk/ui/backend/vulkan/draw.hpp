@@ -11,7 +11,7 @@
 #define FTK_FTK_UI_BACKEND_VULKAN_DRAW_HPP
 
 #include <ftk/ui/backend/vulkan_fwd.hpp>
-#include <ftk/ui/backend/vulkan_indirect_draw.hpp>
+#include <ftk/ui/backend/vulkan/indirect_draw.hpp>
 #include <ftk/ui/toplevel_window.hpp>
 #include <ftk/ui/ui_fwd.hpp>
 
@@ -19,7 +19,7 @@
 #include <fastdraw/object/dmabuf_image.hpp>
 #include <fastdraw/output/vulkan/add_dmabuf_image.hpp>
 
-namespace ftk { namespace ui { namespace backend {
+namespace ftk { namespace ui { namespace backend { namespace vulkan {
 
 template <typename Backend>
 void fill_buffer (VkSemaphore semaphore, toplevel_window<Backend>& toplevel)
@@ -452,6 +452,6 @@ void draw (toplevel_window<Backend>& toplevel)
          }
 }
 
-} } }
+} } } }
 
 #endif

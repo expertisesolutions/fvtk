@@ -15,8 +15,8 @@
 
 #include <ftk/ui/backend/x11_base_fwd.hpp>
 #include <ftk/ui/backend/uv/uv_loop_fwd.hpp>
-#include <ftk/ui/backend/vulkan_draw.hpp>
-#include <ftk/ui/backend/vulkan_queues.hpp>
+#include <ftk/ui/backend/vulkan/draw.hpp>
+#include <ftk/ui/backend/vulkan/queues.hpp>
 
 #include <cstring>
 #include <array>

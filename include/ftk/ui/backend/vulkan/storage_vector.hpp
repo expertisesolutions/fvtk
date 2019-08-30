@@ -7,39 +7,20 @@
 // See http://www.boost.org/libs/foreach for documentation
 //
 
-#ifndef FTK_FTK_UI_BACKEND_VULKAN_STORAGE_ZINDEX_ARRAY_HPP
-#define FTK_FTK_UI_BACKEND_VULKAN_STORAGE_ZINDEX_ARRAY_HPP
+#ifndef FTK_FTK_UI_BACKEND_VULKAN_STORAGE_VECTOR_HPP
+#define FTK_FTK_UI_BACKEND_VULKAN_STORAGE_VECTOR_HPP
 
-namespace ftk { namespace ui { namespace detail {
-
-template <typename Z, typename Enable = void>
-struct zindex_traits;
-
-}
+namespace ftk { namespace ui { namespace backend { namespace vulkan {
       
-template <typename Z, std::size_t MinimumSizePerBuffer = 100 /* to avoid relocations */>
-struct storage_zindex_array
+template <typename T, std::size_t MinimumSizePerBuffer = 100 /* to avoid relocations */>
+struct storage_vector
 {
-  typedef storage_zindex_array<Z, MinimumSizePerBuffer> self_type;
+  typedef storage_vector<T, MinimumSizePerBuffer> self_type;
   
-  constexpr static const unsigned int elements_size = sizeof(Z);
-
-  typedef detail::zindex_traits<Z> traits;
-
-  struct zindex_info
-  {
-    Z zindex;
-    unsigned int index;
-    unsigned int buffer_offset;
-  };
-  
-  storage_zindex_array (VkDevice device, VkPhysicalDevice physical_device)
-    : array_size_per_element (MinimumSizePerBuffer)
-    , map_pointer (nullptr)
+  storage_vector (VkDevice device, VkPhysicalDevice physical_device)
+    : map_pointer (nullptr), size_ (0u)
     , allocated_ (0u), device (device), physical_device (physical_device)
   {
-    zindexes.push_back ({traits::zero(), true});
-    reserve (std::max(zindexes.size(), MinimumSizePerBuffer));
   }
 
   void grow (unsigned int to)
@@ -87,8 +68,8 @@ struct storage_zindex_array
     
     vkBindBufferMemory(device, buffer, memory, 0);
 
-    map(to);
-    allocated_ = to;
+    allocated_ = mem_requirements.size;
+    map(allocated_);
   }
 
   void map(unsigned int size)
@@ -105,36 +86,22 @@ struct storage_zindex_array
 
   uint32_t capacity () const
   {
-    return allocated_ / elements_size;
+    return allocated_ / sizeof(T);
   }
   
   void reserve (unsigned int size)
   {
-    if (allocated_ < size * array_size_per_element)
-      grow (size * array_size_per_element);
+    if (allocated_ < size * sizeof(T))
+      grow (size * sizeof(T));
   }
 
-  // void replace (unsigned int offset, Z)
-  // {
-  //   std::cout << "replacing at offset " << offset << std::endl;
-  //   map (allocated_);
-  //   std::tuple <T...> t {ts...};
-  //   std::memcpy (map_pointer + offset * elements_size, &t, elements_size);
-  //   cpu_memory[offset] = t;
-  //   unmap ();
-  // }
-
-  zindex_info create_new_zindex () // returns offset
+  void push_back (T value)
   {
-    assert (!zindexes.empty());
-    auto index = zindexes.size();
-    zindexes.push_back ({traits::next(zindexes[index - 1].first), true});
-    std::cout << "creating new zindex next from " << zindexes[index - 1].first
-              << " of value " << zindexes[index].first << std::endl;
-
-    reserve (zindexes.size());
-    
-    return {zindexes.back().first, index, index * array_size_per_element};
+    if (capacity () == size())
+    {
+      grow ((allocated_ + sizeof(T)) * 2);
+    }
+    *(begin() + size_++) = std::move(value);
   }
 
   void create_buffer (unsigned int size)
@@ -154,51 +121,24 @@ struct storage_zindex_array
     if (r != vulkan_error_code::success)
       throw std::system_error(make_error_code (r));
   }
+
+  typedef T* iterator;
+  typedef T const* const_iterator;
+
+  iterator begin () { return static_cast<T*>(map_pointer); }
+  const_iterator begin () const { return static_cast<T const*>(map_pointer); }
+  iterator end () { return static_cast<T*>(map_pointer) + size(); }
+  const_iterator end () const { return static_cast<T const*>(map_pointer) + size(); }
   
   VkBuffer get_buffer ()
   {
     return buffer;
   }
 
-  struct value_type
-  {
-    typedef Z const* iterator;
-    typedef Z const* const_iterator;
-    const_iterator begin() const
-    {
-      return first;
-    }
-    const_iterator end() const
-    {
-      return last;
-    }
+  unsigned int size() const { return size_; }
 
-    const_iterator first, last;
-  };
-
-  struct iterator
-  {
-    std::vector<Z>::const_iterator z_first, z_last;
-    void* map_pointer;
-    std::size_t array_size_per_element;
-
-    typedef self_type::value_type value_type;
-    typedef std::ptrdiff_t difference_type;
-    typedef value_type* pointer;
-    typedef value_type reference;
-    typedef std::random_access_iterator_tag iterator_category;
-  };
-
-  unsigned int size() const { return zindexes.size(); }
-
-  zindex_info get_zindex_info (std::size_t index) const
-  {
-    return {zindexes[index].first, index, index * array_size_per_element};
-  }
-
-  std::size_t array_size_per_element;
-  std::vector<std::pair<Z, bool>> zindexes;
   void* map_pointer;
+  unsigned int size_;
   unsigned int allocated_;
   VkDevice device;
   VkPhysicalDevice physical_device;
@@ -206,6 +146,6 @@ struct storage_zindex_array
   VkDeviceMemory memory;
 };
     
-} }
+} } } }
 
 #endif

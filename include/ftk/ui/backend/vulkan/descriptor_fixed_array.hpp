@@ -12,7 +12,7 @@
 
 #include <array>
 
-namespace ftk { namespace ui { namespace vulkan {
+namespace ftk { namespace ui { namespace backend { namespace vulkan {
 
 namespace detail {
 
@@ -183,6 +183,6 @@ struct descriptor_fixed_array
   std::optional<info_type> empty_info;
 };
       
-} } }
+} } } }
 
 #endif
