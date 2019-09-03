@@ -20,18 +20,21 @@ in vec4 gl_FragCoord;
 #include "rectangle_ssbo.frag"
 
 void main() {
-  uint zindex = indirect_draw.zindex[InstanceID];
-  if (component_information.array[zindex].component_type == image_component_type)
+  uint component_index = indirect_draw.zindex[InstanceID];
+  if (component_information.array[component_index].component_type == image_component_type)
   {
-    image_draw_fragment (zindex);
+    image_draw_fragment (component_index);
+    //outColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);
   }
-  else if (component_information.array[zindex].component_type == button_component_type)
+  else if (component_information.array[component_index].component_type == button_component_type)
   {
-    button_draw_fragment (zindex);
+    button_draw_fragment (component_index);
+    //outColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
   }
-  else if (component_information.array[zindex].component_type == rectangle_component_type)
+  else if (component_information.array[component_index].component_type == rectangle_component_type)
   {
-    rectangle_draw_fragment (zindex);
+    rectangle_draw_fragment (component_index);
+    //outColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
   }
 }
 

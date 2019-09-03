@@ -143,7 +143,7 @@ struct buffer_allocator
       info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
       info.allocationSize = 256*1024*1024;
       info.memoryTypeIndex = memory_index;
-      
+
       VkDeviceMemory memory;
       auto r = from_result(vkAllocateMemory(device, &info, nullptr, &memory));
       if (r != vulkan_error_code::success)

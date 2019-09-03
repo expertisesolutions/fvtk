@@ -22,7 +22,8 @@
 namespace ftk { namespace ui { namespace backend { namespace vulkan {
 
 template <typename Backend>
-void fill_buffer (VkSemaphore semaphore, toplevel_window<Backend>& toplevel)
+void fill_buffer (VkSemaphore semaphore, toplevel_window<Backend>& toplevel
+                  , uint32_t image_index)
 {
   using fastdraw::output::vulkan::from_result;
   using fastdraw::output::vulkan::vulkan_error_code;
@@ -56,17 +57,17 @@ void fill_buffer (VkSemaphore semaphore, toplevel_window<Backend>& toplevel)
     throw std::system_error(make_error_code(r));
 
   // fill everything with 0's first
-  vkCmdFillBuffer (command_buffer, toplevel.indirect_draw_buffer
+  vkCmdFillBuffer (command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
                    , 0 /* offset */, (6 + 4096 + 4096) * sizeof(uint32_t)
                    * toplevel.indirect_draw_info_array_size
                    , 0);
   for (std::size_t i = 0; i != toplevel.indirect_draw_info_array_size; ++i)
   {
     // vertex count filling
-    vkCmdFillBuffer (command_buffer, toplevel.indirect_draw_buffer
+    vkCmdFillBuffer (command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
                      , (6 + 4096 + 4096) * sizeof(uint32_t) * i, sizeof (uint32_t), 6);
     // fill fg_zindex array
-    vkCmdFillBuffer (command_buffer, toplevel.indirect_draw_buffer
+    vkCmdFillBuffer (command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
                      , (6 + 4096 + 4096) * sizeof(uint32_t) * i
                      + (6 + 4096) * sizeof(uint32_t)
                      , sizeof (uint32_t) * 4096, 0xFFFFFFFF);
@@ -80,21 +81,32 @@ void fill_buffer (VkSemaphore semaphore, toplevel_window<Backend>& toplevel)
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers = &command_buffer;
+  if (semaphore != VK_NULL_HANDLE)
+  {
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &semaphore;
+  }
 
   {
     ftk::ui::backend::vulkan::queues::lock_graphic_queue lock_queue(toplevel.window.queues);
     r = from_result(vkQueueSubmit(lock_queue.get_queue().vkqueue, 1, &submitInfo, initialization_fence));
   }
+  {
+    r = from_result(vkWaitForFences(toplevel.window.voutput.device, 1, &initialization_fence, false, -1));
+    if (r != vulkan_error_code::success)
+      throw std::system_error (make_error_code (r));
+  }
   if (r != vulkan_error_code::success)
     throw std::system_error(make_error_code (r));
 }
 
+// still damage calculation problems
 template <typename Backend>
 std::vector<toplevel_framebuffer_region>
-foo (toplevel_window<Backend>& toplevel, int imageIndex)
+calculate_regions (toplevel_window<Backend>& toplevel, int image_index)
 {
-  auto framebuffer_damaged_regions = std::move (toplevel.framebuffers_damaged_regions[imageIndex]);
-  assert (toplevel.framebuffers_damaged_regions[imageIndex].empty());
+  auto framebuffer_damaged_regions = std::move (toplevel.swapchain_info[image_index].framebuffers_damaged_regions);
+  assert (toplevel.swapchain_info[image_index].framebuffers_damaged_regions.empty());
 
   if (framebuffer_damaged_regions.size() > 32)
   {
@@ -102,7 +114,7 @@ foo (toplevel_window<Backend>& toplevel, int imageIndex)
       , last = framebuffer_damaged_regions.end();
     for (;first != last; ++first)
     {
-      toplevel.framebuffers_damaged_regions[imageIndex].push_back (std::move(*first));
+      toplevel.swapchain_info[image_index].framebuffers_damaged_regions.push_back (std::move(*first));
     }
     framebuffer_damaged_regions.erase (first, last);
   }
@@ -110,18 +122,18 @@ foo (toplevel_window<Backend>& toplevel, int imageIndex)
   unsigned int i = 0;
   for (auto&& component : toplevel.components)
   {
-    if (component.must_draw[imageIndex])
+    if (component.must_draw[image_index])
     {
       std::cout << "found drawable component " << &component << " component.must_draw[0] "
                 << component.must_draw[0] << " component.must_draw[1] " << component.must_draw[1] << std::endl;
       // images.push_back(image);
-      component.must_draw[imageIndex] = false;
-      component.framebuffers_regions[imageIndex] = {component.x, component.y, component.width, component.height};
+      component.must_draw[image_index] = false;
+      component.framebuffers_regions[image_index] = {component.x, component.y, component.width, component.height};
       if (framebuffer_damaged_regions.size() < 32)
         framebuffer_damaged_regions.push_back
           ({component.x, component.y, component.width, component.height});
       else
-        toplevel.framebuffers_damaged_regions[imageIndex].push_back
+        toplevel.swapchain_info[image_index].framebuffers_damaged_regions.push_back
           ({component.x, component.y, component.width, component.height});
     }
     i++;
@@ -133,9 +145,9 @@ template <typename Backend>
 std::vector<VkCommandBuffer>
 record (toplevel_window<Backend>& toplevel
         , std::vector<toplevel_framebuffer_region> framebuffer_damaged_regions
-        , uint32_t imageIndex)
+        , uint32_t image_index)
 {
-  auto const image_pipeline0 = fastdraw::output::vulkan::create_image_pipeline (toplevel.window.voutput, 0);
+  auto const static image_pipeline0 = fastdraw::output::vulkan::create_image_pipeline (toplevel.window.voutput, 0);
   auto static const vkCmdPushDescriptorSetKHR_ptr
     = vkGetDeviceProcAddr (toplevel.window.voutput.device, "vkCmdPushDescriptorSetKHR");
   auto static const vkCmdPushDescriptorSetKHR
@@ -167,7 +179,6 @@ record (toplevel_window<Backend>& toplevel
       throw std::system_error(make_error_code (r));
   }
 
-
   std::cout << "recording " << framebuffer_damaged_regions.size() << " regions" << std::endl;
   // draw damage areas
   int i = 0;
@@ -184,7 +195,7 @@ record (toplevel_window<Backend>& toplevel
            
     VkRenderPassBeginInfo renderPassInfo = {};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.framebuffer = toplevel.window.swapChainFramebuffers[imageIndex];
+    renderPassInfo.framebuffer = toplevel.window.swapChainFramebuffers[image_index];
     renderPassInfo.renderArea.offset = {x, y};
     {
       auto w = static_cast<uint32_t>(x) + width <= toplevel.window.voutput.swapChainExtent.width
@@ -209,7 +220,7 @@ record (toplevel_window<Backend>& toplevel
 
     {
       VkDescriptorBufferInfo ssboInfo = {};
-      ssboInfo.buffer = toplevel.component_ssbo_buffer;
+      ssboInfo.buffer = toplevel.swapchain_info[image_index].component_ssbo_buffer;
       ssboInfo.range = VK_WHOLE_SIZE;
 
       // VkDescriptorBufferInfo ssboZIndexInfo = {};
@@ -217,7 +228,7 @@ record (toplevel_window<Backend>& toplevel
       // ssboZIndexInfo.range = VK_WHOLE_SIZE;
 
       VkDescriptorBufferInfo indirect_draw_info = {};
-      indirect_draw_info.buffer = toplevel.indirect_draw_buffer;
+      indirect_draw_info.buffer = toplevel.swapchain_info[image_index].indirect_draw_buffer;
       indirect_draw_info.range = VK_WHOLE_SIZE;
       indirect_draw_info.offset = i*sizeof(typename ftk::ui::toplevel_window<Backend>::indirect_draw_info);
 
@@ -232,13 +243,6 @@ record (toplevel_window<Backend>& toplevel
       descriptorWrites[0].descriptorCount = 1;
       descriptorWrites[0].pBufferInfo = &ssboInfo;
       
-      // descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      // descriptorWrites[1].dstSet = 0;
-      // descriptorWrites[1].dstBinding = 1;
-      // descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-      // descriptorWrites[1].descriptorCount = 1;
-      // descriptorWrites[1].pBufferInfo = nullptr;//&ssboZIndexInfo;
-
       descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       descriptorWrites[1].dstSet = 0;
       descriptorWrites[1].dstBinding = 2;
@@ -248,7 +252,7 @@ record (toplevel_window<Backend>& toplevel
              
       vkCmdBindDescriptorSets (damaged_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS
                                , indirect_pipeline.pipeline_layout
-                               , 0, 1, &toplevel.texture_descriptors.set
+                               , 0, 1, &toplevel.swapchain_info[image_index].texture_descriptors.set
                                , 0, 0);
 
       vkCmdBindDescriptorSets (damaged_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS
@@ -261,10 +265,10 @@ record (toplevel_window<Backend>& toplevel
          , indirect_pipeline.pipeline_layout
          , 2 /* from 1 */, sizeof(descriptorWrites)/sizeof(descriptorWrites[0]), &descriptorWrites[0]);
 
-      vkCmdPushDescriptorSetKHR
-        (damaged_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE
-         , indirect_pipeline.pipeline_layout
-         , 2 /* from 1 */, sizeof(descriptorWrites)/sizeof(descriptorWrites[0]), &descriptorWrites[0]);
+      // vkCmdPushDescriptorSetKHR
+      //   (damaged_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE
+      //    , indirect_pipeline.pipeline_layout
+      //    , 2 /* from 1 */, sizeof(descriptorWrites)/sizeof(descriptorWrites[0]), &descriptorWrites[0]);
 
       uint32_t component_size = toplevel.components.size();
       vkCmdPushConstants(damaged_command_buffer
@@ -297,16 +301,16 @@ record (toplevel_window<Backend>& toplevel
     vkCmdBeginRenderPass(damaged_command_buffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     vkCmdBindPipeline(damaged_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, image_pipeline0.pipeline);
-    vkCmdDrawIndirect (damaged_command_buffer, toplevel.indirect_draw_buffer
+    vkCmdDrawIndirect (damaged_command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
                        , sizeof(typename ftk::ui::toplevel_window<Backend>::indirect_draw_info)*i, 1, 0);
 
     vkCmdEndRenderPass(damaged_command_buffer);
 
-    vkCmdFillBuffer (damaged_command_buffer, toplevel.indirect_draw_buffer
-                     , sizeof(uint32_t) /* offset */, (5 + 4096) * sizeof(uint32_t), 0);
+    // vkCmdFillBuffer (damaged_command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
+    //                  , sizeof(uint32_t) /* offset */, (5 + 4096) * sizeof(uint32_t), 0);
 
-    vkCmdFillBuffer (damaged_command_buffer, toplevel.indirect_draw_buffer
-                     , sizeof(uint32_t) * (6 + 4096) /* offset */, 4096 * sizeof(uint32_t), 0xFFFFFFFF);
+    // vkCmdFillBuffer (damaged_command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
+    //                  , sizeof(uint32_t) * (6 + 4096) /* offset */, 4096 * sizeof(uint32_t), 0xFFFFFFFF);
 
     r = from_result (vkEndCommandBuffer(damaged_command_buffer));
     if (r != vulkan_error_code::success)
@@ -318,138 +322,210 @@ record (toplevel_window<Backend>& toplevel
   return damaged_command_buffers;
 }
 
-VkSemaphore render_thread_create_semaphore (VkDevice device)
-{
-  using fastdraw::output::vulkan::from_result;
-  using fastdraw::output::vulkan::vulkan_error_code;
-  VkSemaphore semaphore;
-  VkSemaphoreCreateInfo semaphoreInfo = {};
-  semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-  auto r = from_result(vkCreateSemaphore (device, &semaphoreInfo, nullptr, &semaphore));
-  if (r != vulkan_error_code::success)
-    throw std::system_error(make_error_code(r));
-  return semaphore;
-}
+template <typename Backend>
+void draw (toplevel_window<Backend>& toplevel, uint32_t imageAvailable
+           , VkSemaphore image_available);
 
 template <typename Backend>
 void draw (toplevel_window<Backend>& toplevel)
 {
   using fastdraw::output::vulkan::from_result;
   using fastdraw::output::vulkan::vulkan_error_code;
-  VkSemaphore imageAvailable, renderFinished;
-  imageAvailable = render_thread_create_semaphore (toplevel.window.voutput.device);
-  renderFinished = render_thread_create_semaphore (toplevel.window.voutput.device);
-       VkFence executionFinished[2];
-       VkFenceCreateInfo fenceInfo = {};
-       fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-       auto r = from_result (vkCreateFence (toplevel.window.voutput.device, &fenceInfo, nullptr, &executionFinished[0]));
-       if (r != vulkan_error_code::success)
-         throw std::system_error(make_error_code(r));
-       r = from_result(vkCreateFence (toplevel.window.voutput.device, &fenceInfo, nullptr, &executionFinished[1]));
-       if (r != vulkan_error_code::success)
-         throw std::system_error(make_error_code(r));
 
-  fill_buffer (VK_NULL_HANDLE, toplevel);
+  VkSemaphore image_available = render_thread_create_semaphore (toplevel.window.voutput.device);
 
-  // std::cout << "render thread waiting to render (before lock)" << std::endl;
-  //std::unique_lock<std::mutex> l(mutex);
-  // std::cout << "render thread waiting to render" << std::endl;
-  uint32_t imageIndex = -1;
+  uint32_t image_index = -1;
+  auto r = from_result(vkAcquireNextImageKHR(toplevel.window.voutput.device, toplevel.window.swapChain
+                                             , std::numeric_limits<uint64_t>::max(), image_available
+                                             , nullptr, &image_index));
+  if (r != vulkan_error_code::success)
+    throw std::system_error (make_error_code (r));
 
-  vkAcquireNextImageKHR(toplevel.window.voutput.device, toplevel.window.swapChain
-                        , std::numeric_limits<uint64_t>::max(), imageAvailable
-                        , /*toplevel.window.executionFinished*/nullptr, &imageIndex);
+  draw (toplevel, image_index, image_available);
+}
 
-  auto framebuffer_damaged_regions = foo (toplevel, imageIndex);
-  std::vector<VkCommandBuffer> buffers = record (toplevel, framebuffer_damaged_regions
-                                                 , imageIndex);
+template <typename Backend>
+void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
+           , VkSemaphore image_available)
+{
+  using fastdraw::output::vulkan::from_result;
+  using fastdraw::output::vulkan::vulkan_error_code;
 
+  {
+    std::unique_lock<std::mutex> l (toplevel.swapchain_info[image_index].in_use_mutex);
+    assert (toplevel.swapchain_info[image_index].transfer_pending_operations.empty());
+    toplevel.swapchain_info[image_index].is_in_use = true;
+  }
+
+  if (toplevel.swapchain_info[image_index].buffer_is_dirty)
+  {
+    //toplevel.swapchain_info[image_index].buffer_is_dirty = false;
+    fill_buffer (VK_NULL_HANDLE, toplevel, image_index);
+  }
+
+  auto framebuffer_damaged_regions = calculate_regions (toplevel, image_index);
+  std::vector<VkCommandBuffer> buffers = record (toplevel, framebuffer_damaged_regions, image_index);
+
+  //toplevel.swapchain_info[image_index].buffer_is_dirty = false;
+  //fill_buffer (VK_NULL_HANDLE, toplevel, image_index);
+
+  VkSemaphore render_finished = render_thread_create_semaphore (toplevel.window.voutput.device);
+  
   VkSubmitInfo submitInfo = {};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
                              
-         VkSemaphore waitSemaphores[] = {imageAvailable};
-         VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-         submitInfo.waitSemaphoreCount = 1;
-         submitInfo.pWaitSemaphores = waitSemaphores;
-         submitInfo.pWaitDstStageMask = waitStages;
-         submitInfo.commandBufferCount = buffers.size();
-         submitInfo.pCommandBuffers = &buffers[0];
+  VkSemaphore waitSemaphores[] = {image_available};
+  VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+  submitInfo.waitSemaphoreCount = 1;
+  submitInfo.pWaitSemaphores = waitSemaphores;
+  submitInfo.pWaitDstStageMask = waitStages;
+  submitInfo.commandBufferCount = buffers.size();
+  submitInfo.pCommandBuffers = &buffers[0];
 
-         VkSemaphore signalSemaphores[] = {renderFinished};
-         submitInfo.signalSemaphoreCount = 1;
-         submitInfo.pSignalSemaphores = signalSemaphores;
-         using fastdraw::output::vulkan::from_result;
-         using fastdraw::output::vulkan::vulkan_error_code;
+  VkSemaphore signalSemaphores[] = {render_finished};
+  submitInfo.signalSemaphoreCount = 1;
+  submitInfo.pSignalSemaphores = signalSemaphores;
+  using fastdraw::output::vulkan::from_result;
+  using fastdraw::output::vulkan::vulkan_error_code;
 
-         auto queue_begin = std::chrono::high_resolution_clock::now();
-         {
-           queues::lock_graphic_queue lock_queue(toplevel.window.queues);
+  VkFence execution_finished;
+  VkFenceCreateInfo fenceInfo = {};
+  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  auto r = from_result (vkCreateFence (toplevel.window.voutput.device, &fenceInfo, nullptr, &execution_finished));
+  if (r != vulkan_error_code::success)
+    throw std::system_error(make_error_code(r));
 
-           auto now = std::chrono::high_resolution_clock::now();
-           auto diff = now - queue_begin;
-           std::cout << "Time locking queue "
-                     << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
-                     << "ms" << std::endl;
+  auto queue_begin = std::chrono::high_resolution_clock::now();
+  {
+    queues::lock_graphic_queue lock_queue(toplevel.window.queues);
+
+    auto now = std::chrono::high_resolution_clock::now();
+    auto diff = now - queue_begin;
+    std::cout << "Time locking queue "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
+              << "ms" << std::endl;
          
-           //std::cout << "submit graphics " << buffers.size() << std::endl;
-           auto r = from_result(vkQueueSubmit(lock_queue.get_queue().vkqueue, 1, &submitInfo, executionFinished[imageIndex]));
-           if (r != vulkan_error_code::success)
-             throw std::system_error(make_error_code (r));
+    //std::cout << "submit graphics " << buffers.size() << std::endl;
+    auto r = from_result(vkQueueSubmit(lock_queue.get_queue().vkqueue, 1, &submitInfo, execution_finished/*/VK_NULL_HANDLE/*/));
+    if (r != vulkan_error_code::success)
+      throw std::system_error(make_error_code (r));
 
-           auto now2 = std::chrono::high_resolution_clock::now();
-           auto diff2 = now2 - now;
-           std::cout << "Time submitting to queue "
-                     << std::chrono::duration_cast<std::chrono::milliseconds>(diff2).count()
-                     << "ms" << std::endl;
-         }
+    auto now2 = std::chrono::high_resolution_clock::now();
+    auto diff2 = now2 - now;
+    std::cout << "Time submitting to queue "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(diff2).count()
+              << "ms" << std::endl;
+  }
 
-         {
-           VkPresentInfoKHR presentInfo = {};
-           presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+  {
+    VkPresentInfoKHR presentInfo = {};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-           VkSemaphore waitSemaphores[] = {renderFinished};
+    VkSemaphore waitSemaphores[] = {render_finished};
          
-           presentInfo.waitSemaphoreCount = 1;
-           presentInfo.pWaitSemaphores = waitSemaphores;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = waitSemaphores;
 
-           VkSwapchainKHR swapChains[] = {toplevel.window.swapChain};
-           presentInfo.swapchainCount = 1;
-           presentInfo.pSwapchains = swapChains;
-           presentInfo.pImageIndices = &imageIndex;
-           presentInfo.pResults = nullptr; // Optional
+    VkSwapchainKHR swapChains[] = {toplevel.window.swapChain};
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = swapChains;
+    presentInfo.pImageIndices = &image_index;
+    presentInfo.pResults = nullptr; // Optional
 
-           {
-             queues::lock_presentation_queue lock_queue(toplevel.window.queues);
+    {
+      queues::lock_presentation_queue lock_queue(toplevel.window.queues);
          
-             using fastdraw::output::vulkan::from_result;
-             using fastdraw::output::vulkan::vulkan_error_code;
+      using fastdraw::output::vulkan::from_result;
+      using fastdraw::output::vulkan::vulkan_error_code;
+      
+      auto now = std::chrono::high_resolution_clock::now();
+      
+      auto r = from_result (vkQueuePresentKHR(lock_queue.get_queue().vkqueue, &presentInfo));
+      if (r != vulkan_error_code::success)
+        throw std::system_error (make_error_code (r));
+      
+      auto now2 = std::chrono::high_resolution_clock::now();
+      auto diff = now2 - now;
+      std::cout << "Time submitting presentation queue "
+                << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
+                << "ms" << std::endl;
 
-             auto now = std::chrono::high_resolution_clock::now();
-             
-             auto r = from_result (vkQueuePresentKHR(lock_queue.get_queue().vkqueue, &presentInfo));
-             if (r != vulkan_error_code::success)
-               throw std::system_error (make_error_code (r));
-
-             auto now2 = std::chrono::high_resolution_clock::now();
-             auto diff = now2 - now;
-             std::cout << "Time submitting presentation queue "
-                       << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
-                       << "ms" << std::endl;
-             // r = from_result(vkQueueWaitIdle (lock_queue.get_queue().vkqueue));
-             // if (r != vulkan_error_code::success)
-             //   throw std::system_error (make_error_code (r));
-           }
+      /// still synchronization problems
+      r = from_result(vkQueueWaitIdle (lock_queue.get_queue().vkqueue));
+      if (r != vulkan_error_code::success)
+        throw std::system_error (make_error_code (r));
+    }
            
-           {
-             auto now = std::chrono::high_resolution_clock::now();
-             auto diff = now - queue_begin;
-             std::cout << "Time running drawing command "
-                       << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
-                       << "ms" << std::endl;
-           }
+    {
+      auto now = std::chrono::high_resolution_clock::now();
+      auto diff = now - queue_begin;
+      std::cout << "Time running drawing command "
+                << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
+                << "ms" << std::endl;
+    }
+    
+  }
 
-         }
+  {
+    r = from_result(vkWaitForFences(toplevel.window.voutput.device, 1, &execution_finished, false, -1));
+    if (r != vulkan_error_code::success)
+      throw std::system_error (make_error_code (r));
+  }
+  {
+    auto data = toplevel.buffer_allocator.map (toplevel.swapchain_info[image_index].component_ssbo_buffer);
+    auto iterator = static_cast<typename toplevel_window<Backend>::component_info*>(data)
+      , last = iterator + toplevel.components.size();
+    for (int i = 0; iterator != last; ++iterator,++i)
+    {
+      std::cout << "==== " << i << " showing components descriptor_index " << iterator->descriptor_index
+                << " x " << iterator->x
+                << " y " << iterator->y
+                << " w " << iterator->w
+                << " h " << iterator->h
+                << " found alpha " << iterator->found_alpha
+                << " compnent type " << iterator->component_type
+                << " padding0 " << iterator->padding
+                << " padding.color[0] " << iterator->component_data.color[0]
+                << " padding.color[1] " << iterator->component_data.color[1]
+                << " padding.color[2] " << iterator->component_data.color[2]
+                << " padding.color[3] " << iterator->component_data.color[3]
+                << std::endl;
+    };
+    toplevel.buffer_allocator.unmap (toplevel.swapchain_info[image_index].component_ssbo_buffer);
+  }
+  {
+    auto data = toplevel.buffer_allocator.map (toplevel.swapchain_info[image_index].indirect_draw_buffer);
+    auto iterator = static_cast<typename toplevel_window<Backend>::indirect_draw_info*>(data)
+      , last = iterator + toplevel_window<Backend>::indirect_draw_info_array_size;
+    for (int i = 0; iterator != last; ++iterator,++i)
+    {
+      std::cout << "finished indirect draw info vertexCount " << iterator->indirect.vertexCount
+                << " instanceCount " << iterator->indirect.instanceCount
+                << " firstVertex " << iterator->indirect.firstVertex
+                << " firstInstance " << iterator->indirect.firstInstance
+                << " component length " << iterator->component_length
+                << " fragment_data_length " << iterator->fragment_data_length
+        ;
+      std::cout << " zindexes ";
+      for (unsigned int j = 0; j != iterator->fragment_data_length; ++j)
+      {
+        std::cout << " " << j;
+      }
+      std::cout << std::endl;
+    }
+    toplevel.buffer_allocator.unmap (toplevel.swapchain_info[image_index].indirect_draw_buffer);
+  }
+
+  {
+    std::unique_lock<std::mutex> l (toplevel.swapchain_info[image_index].in_use_mutex);
+    assert (toplevel.swapchain_info[image_index].is_in_use);
+    toplevel.swapchain_info[image_index].is_in_use = false;
+    if (!toplevel.swapchain_info[image_index].transfer_pending_operations.empty())
+    {
+      std::cout << "there are queued operations" << std::endl;
+    }
+  }
+
 }
 
 } } } }

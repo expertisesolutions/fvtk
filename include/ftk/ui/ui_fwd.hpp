@@ -12,7 +12,7 @@
 
 namespace ftk { namespace ui {
 
-template <typename Backend>
+    template <typename Backend, std::size_t = 2>
 struct toplevel_window;
 
 } }

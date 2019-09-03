@@ -70,10 +70,24 @@ int main(int argc, char* argv[])
   auto image_path = test_res_path / "background.jpg";
   std::cout << "loading " << image_path.c_str() << std::endl;
   auto image = vulkan_loader.load (image_path, fs_loader);
-    
-  w.append_image (10, 10, 200, 200, image.get().image_view);
+
+  w.append_rectangle (0, 0, 600, 500, {0, 0, 255, 255});
+  w.append_rectangle (600, 500, 600, 500, {0, 0, 255, 255});
+  auto image_iterator = w.append_image (10, 10, 200, 200, image.get().image_view);
   ftk::ui::backend::vulkan::draw (w);
+
+  std::size_t x = 10, y = 10;
   
+  ftk::ui::backend::uv::timer_wait
+    (backend.loop
+     , 15
+     , 15
+     , [&] (uv_timer_t* timer)
+       {
+         w.move_component (image_iterator, x += 10, y += 10);
+         ftk::ui::backend::vulkan::draw (w);
+       });  
+
   ftk::ui::backend::uv::timer_wait
     (backend.loop
      , 1000

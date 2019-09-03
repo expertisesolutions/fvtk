@@ -1,5 +1,6 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
+#extension GL_GOOGLE_include_directive : enable
 
 const int tex_max_size = 4096;
 const int screen_width = 1280;
@@ -19,35 +20,7 @@ vec2 texcoord[6]
    ,  {0.0f,  0.0f}
   };
 
-struct image_info
-{
-  uint ii_zindex;
-  uint ii_x, ii_y, ii_w, ii_h;
-  uint alpha_compositing;
-  uint found_alpha;
-  uint padding;
-  //uint cover_bitset[tex_max_size/32];
-};
-layout  (std430, set = 2, binding = 0) readonly buffer image_infos
-{
-  image_info ii[];
-};
-layout  (std430, set = 2, binding = 1) readonly buffer image_zindex
-{
-  uint zindex_image[];
-};
-layout (std430, set = 2, binding = 2) readonly buffer indirect_draw
-{
-  uint vertex_count;
-  uint instance_count;
-  uint first_vertex;
-  uint first_instance;
-
-  uint image_length;
-  uint fragment_data_length;
-  uint buffers_to_draw [tex_max_size];
-  uint fg_zindex[tex_max_size];
-};
+#include "set2.layout"
 
 float scale (uint v, uint size)
 {
@@ -56,12 +29,12 @@ float scale (uint v, uint size)
 
 void main()
 {
-  uint zindex = fg_zindex[gl_InstanceIndex];
+  uint zindex = indirect_draw.zindex[gl_InstanceIndex];
 
-  uint x = ii[zindex].ii_x;
-  uint y = ii[zindex].ii_y;
-  uint w = ii[zindex].ii_w;
-  uint h = ii[zindex].ii_h;
+  uint x = component_information.array[zindex].ii_x;
+  uint y = component_information.array[zindex].ii_y;
+  uint w = component_information.array[zindex].ii_w;
+  uint h = component_information.array[zindex].ii_h;
   uint x2 = x + w-1;
   uint y2 = x + h-1;
   float scaled_x1 = scale (x, screen_width);

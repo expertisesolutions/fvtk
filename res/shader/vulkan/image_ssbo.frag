@@ -5,9 +5,10 @@ struct image_info
 {
   uint texture_descriptor_index;
   uint ii_x, ii_y, ii_w, ii_h;
-  uint alpha_compositing;
+  //uint alpha_compositing;
   uint found_alpha;
   uint component_type;
+  uint padding0;
   uint padding[4];
 };
 
