@@ -1,4 +1,10 @@
 
+#ifdef VERTEX_SHADER
+#define READONLY readonly
+#else
+#define READONLY
+#endif
+
 struct component_info
 {
   uint descriptor_index;
@@ -10,12 +16,12 @@ struct component_info
   uint padding[4];
 };
 
-layout  (std430, set = 2, binding = 0) buffer component_infos
+layout  (std430, set = 2, binding = 0) READONLY buffer component_infos
 {
   component_info array[];
 } component_information;
 
-layout (std430, set = 2, binding = 2) buffer indirect_draw_info
+layout (std430, set = 2, binding = 2) READONLY buffer indirect_draw_info
 {
   uint vertex_count;
   uint instance_count;
