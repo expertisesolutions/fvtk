@@ -6,7 +6,7 @@
 import type ;
 import common ;
 import generators ;
-import toolset ;
+import toolset : flags ;
 import project ;
 import targets ;
 import scanner ;
@@ -29,6 +29,7 @@ rule init ( name ? )
     type.set-scanner SHADER : glsl-scanner ;
 
     generators.register-standard glslang.compile : SHADER : SPV ;
+    flags glslang DEFINES <define> ;
 
     IMPORT $(__name__) : glslang : : glslang ;
   }
@@ -65,5 +66,5 @@ rule compile ( target : source : requirements * )
 
 actions glslang-compile
 {
-  $(.glslangValidator) -V $(>) -o $(<)
+  $(.glslangValidator) -V -D$(DEFINES) $(>) -o $(<)
 }
