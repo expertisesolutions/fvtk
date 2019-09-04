@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
   auto image = vulkan_loader.load (image_path, fs_loader);
     
   w.append_image (10, 10, 200, 200, image.get().image_view);
-  ftk::ui::backend::vulkan::draw (w);
+  ftk::ui::backend::vulkan::draw_and_present (w);
   
   ftk::ui::backend::uv::timer_wait
     (backend.loop

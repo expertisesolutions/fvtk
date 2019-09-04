@@ -108,6 +108,8 @@ calculate_regions (toplevel_window<Backend>& toplevel, int image_index)
   auto framebuffer_damaged_regions = std::move (toplevel.swapchain_info[image_index].framebuffers_damaged_regions);
   assert (toplevel.swapchain_info[image_index].framebuffers_damaged_regions.empty());
 
+  std::cout << "damaged regions pre-recorded " << framebuffer_damaged_regions.size() << std::endl;
+
   if (framebuffer_damaged_regions.size() > 32)
   {
     auto first = std::next (framebuffer_damaged_regions.begin(), 32)
@@ -223,10 +225,6 @@ record (toplevel_window<Backend>& toplevel
       ssboInfo.buffer = toplevel.swapchain_info[image_index].component_ssbo_buffer;
       ssboInfo.range = VK_WHOLE_SIZE;
 
-      // VkDescriptorBufferInfo ssboZIndexInfo = {};
-      // ssboZIndexInfo.buffer = toplevel.image_zindex_ssbo_buffer;
-      // ssboZIndexInfo.range = VK_WHOLE_SIZE;
-
       VkDescriptorBufferInfo indirect_draw_info = {};
       indirect_draw_info.buffer = toplevel.swapchain_info[image_index].indirect_draw_buffer;
       indirect_draw_info.range = VK_WHOLE_SIZE;
@@ -264,11 +262,6 @@ record (toplevel_window<Backend>& toplevel
         (damaged_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS
          , indirect_pipeline.pipeline_layout
          , 2 /* from 1 */, sizeof(descriptorWrites)/sizeof(descriptorWrites[0]), &descriptorWrites[0]);
-
-      // vkCmdPushDescriptorSetKHR
-      //   (damaged_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE
-      //    , indirect_pipeline.pipeline_layout
-      //    , 2 /* from 1 */, sizeof(descriptorWrites)/sizeof(descriptorWrites[0]), &descriptorWrites[0]);
 
       uint32_t component_size = toplevel.components.size();
       vkCmdPushConstants(damaged_command_buffer
@@ -323,11 +316,18 @@ record (toplevel_window<Backend>& toplevel
 }
 
 template <typename Backend>
-void draw (toplevel_window<Backend>& toplevel, uint32_t imageAvailable
-           , VkSemaphore image_available);
+void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
+           , VkSemaphore image_available, VkSemaphore render_finished);
 
 template <typename Backend>
-void draw (toplevel_window<Backend>& toplevel)
+void present (toplevel_window<Backend>& toplevel, uint32_t image_index
+              , VkSemaphore render_finished);
+
+template <typename Backend>
+void debug_ssbo_buffer (toplevel_window<Backend>& toplevel, uint32_t image_index);
+
+template <typename Backend>
+void draw_and_present (toplevel_window<Backend>& toplevel, bool debug_ssbo = false)
 {
   using fastdraw::output::vulkan::from_result;
   using fastdraw::output::vulkan::vulkan_error_code;
@@ -341,20 +341,36 @@ void draw (toplevel_window<Backend>& toplevel)
   if (r != vulkan_error_code::success)
     throw std::system_error (make_error_code (r));
 
-  draw (toplevel, image_index, image_available);
+  VkSemaphore render_finished = render_thread_create_semaphore (toplevel.window.voutput.device);
+  draw (toplevel, image_index, image_available, render_finished);
+  present (toplevel, image_index, render_finished);
+  if (debug_ssbo)
+    debug_ssbo_buffer (toplevel, image_index);
 }
 
 template <typename Backend>
 void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
-           , VkSemaphore image_available)
+           , VkSemaphore image_available, VkSemaphore render_finished)
 {
   using fastdraw::output::vulkan::from_result;
   using fastdraw::output::vulkan::vulkan_error_code;
 
+  // in the wrong place
   {
     std::unique_lock<std::mutex> l (toplevel.swapchain_info[image_index].in_use_mutex);
-    assert (toplevel.swapchain_info[image_index].transfer_pending_operations.empty());
     toplevel.swapchain_info[image_index].is_in_use = true;
+    //assert (toplevel.swapchain_info[image_index].transfer_pending_operations.empty());
+    if (!toplevel.swapchain_info[image_index].transfer_pending_operations.empty())
+    {
+      for (auto&& op : toplevel.swapchain_info[image_index].transfer_pending_operations)
+      {
+        std::visit([&] (auto&& op)
+                   {
+                     toplevel.transfer_operation (op, toplevel.swapchain_info[image_index], image_index);
+                   }, op.operation);
+      }
+      toplevel.swapchain_info[image_index].transfer_pending_operations.clear();
+    }
   }
 
   if (toplevel.swapchain_info[image_index].buffer_is_dirty)
@@ -369,8 +385,6 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
   //toplevel.swapchain_info[image_index].buffer_is_dirty = false;
   //fill_buffer (VK_NULL_HANDLE, toplevel, image_index);
 
-  VkSemaphore render_finished = render_thread_create_semaphore (toplevel.window.voutput.device);
-  
   VkSubmitInfo submitInfo = {};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
                              
@@ -418,6 +432,18 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
   }
 
   {
+    r = from_result(vkWaitForFences(toplevel.window.voutput.device, 1, &execution_finished, false, -1));
+    if (r != vulkan_error_code::success)
+      throw std::system_error (make_error_code (r));
+  }
+
+}
+
+template <typename Backend>
+void present (toplevel_window<Backend>& toplevel, uint32_t image_index
+              , VkSemaphore render_finished)
+{
+  {
     VkPresentInfoKHR presentInfo = {};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
@@ -456,21 +482,20 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
         throw std::system_error (make_error_code (r));
     }
            
-    {
-      auto now = std::chrono::high_resolution_clock::now();
-      auto diff = now - queue_begin;
-      std::cout << "Time running drawing command "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
-                << "ms" << std::endl;
-    }
+    // {
+    //   auto now = std::chrono::high_resolution_clock::now();
+    //   auto diff = now - queue_begin;
+    //   std::cout << "Time running drawing command "
+    //             << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
+    //             << "ms" << std::endl;
+    // }
     
   }
+}
 
-  {
-    r = from_result(vkWaitForFences(toplevel.window.voutput.device, 1, &execution_finished, false, -1));
-    if (r != vulkan_error_code::success)
-      throw std::system_error (make_error_code (r));
-  }
+template <typename Backend>
+void debug_ssbo_buffer (toplevel_window<Backend>& toplevel, uint32_t image_index)
+{
   {
     auto data = toplevel.buffer_allocator.map (toplevel.swapchain_info[image_index].component_ssbo_buffer);
     auto iterator = static_cast<typename toplevel_window<Backend>::component_info*>(data)
@@ -525,7 +550,6 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
       std::cout << "there are queued operations" << std::endl;
     }
   }
-
 }
 
 } } } }

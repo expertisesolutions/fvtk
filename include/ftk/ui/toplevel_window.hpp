@@ -117,20 +117,23 @@ struct rectangle_component
 {
   fastdraw::color::color_premultiplied_rgba<uint8_t> color;
 };
-    
+
+template <std::size_t swapchain_image_count>
 struct toplevel_window_component
 {
   std::int32_t x, y, width, height;
   std::variant<image_component, button_component, rectangle_component> component_data;
 
-  bool must_draw[2] = {true, true};
+  bool must_draw[swapchain_image_count] = {true, true};
 
-  toplevel_framebuffer_region framebuffers_regions[2];
+  toplevel_framebuffer_region framebuffers_regions[swapchain_image_count];
 };
 
 template <typename Backend, std::size_t swapchain_image_count>
 struct toplevel_window
 {
+  typedef ui::toplevel_window_component<swapchain_image_count> window_component;
+  
   static constexpr const bool backend_is_reference = std::is_reference<Backend>::type::value;
   using backend_type = typename std::conditional
     <backend_is_reference
@@ -216,13 +219,13 @@ struct toplevel_window
 
   toplevel_window (toplevel_window&& other) = delete; // for now
 
-  typedef std::list<toplevel_window_component>::iterator component_iterator;
+  typedef typename std::list<window_component>::iterator component_iterator;
 
   // modifies components, ssbo buffer and texture descriptor
   component_iterator append_image (std::int32_t x, std::int32_t y, std::int32_t w, std::int32_t h, VkImageView image)
   {
     auto texture_descriptor_index = create_new_zindex();
-    toplevel_window_component component
+    window_component component
       = {x, y, w, h, image_component{image, texture_descriptor_index}};
 
     std::cout << "appending image in " << component.x << "x" << component.y << std::endl;
@@ -240,7 +243,7 @@ struct toplevel_window
                                        , fastdraw::color::color_premultiplied_rgba<uint8_t> color)
   {
     //auto texture_descriptor_index = create_new_zindex();
-    toplevel_window_component component
+    window_component component
       = {x, y, w, h, rectangle_component{color}};
 
     std::cout << "appending rectangle in " << component.x << "x" << component.y << std::endl;
@@ -332,8 +335,7 @@ struct toplevel_window
     component->x = x;
     component->y = y;
 
-    typename component_operation::move_component_operation
-      op {component, old_x, old_y};
+    typename component_operation::move_component_operation op {component};
     queue_operation (op);
     
   }
@@ -424,12 +426,12 @@ struct toplevel_window
     struct move_component_operation
     {
       component_iterator component;
-      std::int32_t old_x, old_y;
+      //std::int32_t old_x, old_y;
     };
     
     std::variant<append_image_operation, append_rectangle_operation
-                 , replace_image_view_operation
-                 , remove_component_operation
+                 //, replace_image_view_operation
+                 //, remove_component_operation
                  , move_component_operation> operation;
   };
 
@@ -486,10 +488,8 @@ struct toplevel_window
                 << op.component->framebuffers_regions[swapchain_index].y << std::endl;
       swapchain_info.framebuffers_damaged_regions.push_back (op.component->framebuffers_regions[swapchain_index]);
       op.component->framebuffers_regions[swapchain_index] = {};
+      op.component->must_draw[swapchain_index] = true;
     }
-
-    auto width = op.component->width;
-    auto height = op.component->height;
 
     {
       auto ssbo_data = buffer_allocator.map (swapchain_info.component_ssbo_buffer);
@@ -543,8 +543,9 @@ struct toplevel_window
     VkBuffer component_ssbo_buffer;
     VkBuffer indirect_draw_buffer;
     VkFence execution_finished;
-    bool buffer_is_dirty;
-    VkSemaphore render_finished;
+    bool buffer_is_dirty;   /// do we need this?
+    //VkSemaphore render_finished;
+    
     std::mutex in_use_mutex;
     bool is_in_use;
 
@@ -555,7 +556,7 @@ struct toplevel_window
       , component_ssbo_buffer (component_ssbo_buffer)
       , indirect_draw_buffer (indirect_draw_buffer)
       , execution_finished (execution_finished)
-      , render_finished (render_finished)
+        //, render_finished (render_finished)
       , in_use_mutex {}
       , is_in_use (false)
     {}
@@ -569,13 +570,13 @@ struct toplevel_window
       , indirect_draw_buffer (std::move(other.indirect_draw_buffer))
       , execution_finished (std::move(other.execution_finished))
       , buffer_is_dirty (std::move(other.buffer_is_dirty))
-      , render_finished (std::move(other.render_finished))
+        //, render_finished (std::move(other.render_finished))
       , in_use_mutex {}
       , is_in_use (other.is_in_use)
     {}
   };
 
-  std::list<toplevel_window_component> components;
+  std::list<window_component> components;
   backend_window_type window;
   fastdraw::output::vulkan::vulkan_draw_info image_pipeline;
   backend::vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLER, 1> sampler_descriptors;
