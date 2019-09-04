@@ -32,6 +32,20 @@ namespace ftk { namespace ui {
 
 namespace backend { namespace vulkan {
 
+VkFence render_thread_create_fence (VkDevice device)
+{
+  using fastdraw::output::vulkan::from_result;
+  using fastdraw::output::vulkan::vulkan_error_code;
+  VkFence fence;
+  VkFenceCreateInfo fenceInfo = {};
+  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  auto r = from_result (vkCreateFence (device, &fenceInfo, nullptr, &fence));
+  if (r != vulkan_error_code::success)
+    throw std::system_error(make_error_code(r));
+
+  return fence;
+}
+
 VkSemaphore render_thread_create_semaphore (VkDevice device)
 {
   using fastdraw::output::vulkan::from_result;
@@ -153,7 +167,8 @@ struct toplevel_window
                         , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
                         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                         | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-    , swapchain_info ({swapchain_initialize(empty_image_view), swapchain_initialize(empty_image_view)})
+    , swapchain_info ({swapchain_initialize(window.voutput.device, empty_image_view)
+                       , swapchain_initialize(window.voutput.device, empty_image_view)})
   {
     initialize_buffers ();
   }
@@ -167,7 +182,8 @@ struct toplevel_window
                         , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
                         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                         | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-    , swapchain_info ({swapchain_initialize(empty_image_view), swapchain_initialize(empty_image_view)})
+    , swapchain_info ({swapchain_initialize(this->window.voutput.device, empty_image_view)
+                       , swapchain_initialize(this->window.voutput.device, empty_image_view)})
   {
     initialize_buffers ();
   }
@@ -192,11 +208,12 @@ struct toplevel_window
   }
 
   struct swapchain_specific_information;
-  swapchain_specific_information swapchain_initialize (VkImageView empty_image_view)
+  swapchain_specific_information swapchain_initialize (VkDevice device, VkImageView empty_image_view)
   {
     swapchain_specific_information v
       {
-       {window.voutput.device, image_pipeline.descriptorSetLayouts[0]
+       device
+       , {window.voutput.device, image_pipeline.descriptorSetLayouts[0]
                  , VkDescriptorImageInfo
                  {nullptr, empty_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}}
         , allocate_buffer (sizeof(component_info)*4096, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
@@ -532,43 +549,86 @@ struct toplevel_window
   
   struct swapchain_specific_information
   {
+    // Ideally, the loop should be like:
+    // while
+    // {
+    //   (0) VkAcquireImageKHR image_available acquire_fence
+    //   (1) V-Sync after acquire_fence
+    //   (2) fill_buffer fill_signal_semaphore
+    //   (3) transfer_pending_operations (Settle SSBO buffer transfers) (before v-sync)
+    //   (4) Get damaged regions (before v-sync)
+    //   (5) Record a new/reused commandbuffer (needs damaged regions)
+    //   (6) Submit graphics
+    //   (7) Finished graphics after fence or semaphore
+    //   (8) Submit presentation
+    //   (9) Free resources (reset commandbuffer, etc)
+    //   (2) Reset temporary data buffer
+    // }
+    // 
+    // Explicit Dependencies
+
+    // 0 -> 1 acquire_fence
+    // 0 -> 6 image_available_sem
+    // 1 -> 3 acquire_fence
+    // 2 -> 6 fill_signal_sem
+    // 3 -> 4 implicit
+    // 4 -> 5 implicit
+    // 5 -> 6 implicit
+    // 6 -> 7 implicit
+    // 7 -> 8 render_finished_sem
+    // 7 -> 9 render_fence
+    // 6 -> 2 render_finished_sem
+
+    VkSemaphore image_available_sem, fill_signal_sem, render_finished_sem;
+    VkFence acquire_fence, fill_fence, render_fence;
+
+    VkCommandBuffer fill_command, render_command;
+
     std::vector<toplevel_framebuffer_region> framebuffers_damaged_regions;
     std::vector<component_operation> transfer_pending_operations;
 
-    // can't be modified while command buffer is used
-    VkCommandBuffer command_buffer_in_use;
+    // protected by is_in_use/in_use_mutex
     backend::vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4096> texture_descriptors;
+    // protected by is_in_use/in_use_mutex
     VkBuffer component_ssbo_buffer;
+    // protected by is_in_use/in_use_mutex
     VkBuffer indirect_draw_buffer;
-    VkFence execution_finished;
     bool buffer_is_dirty;   /// do we need this?
-    //VkSemaphore render_finished;
     
     std::mutex in_use_mutex;
     bool is_in_use;
 
-    swapchain_specific_information (backend::vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4096> texture_descriptors
+    swapchain_specific_information (VkDevice device
+                                    , backend::vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4096> texture_descriptors
                                     , VkBuffer component_ssbo_buffer, VkBuffer indirect_draw_buffer
                                     , VkFence execution_finished, VkSemaphore render_finished)
-      : texture_descriptors (texture_descriptors)
+      : image_available_sem (/*backend::vulkan::render_thread_create_semaphore(device)*/VK_NULL_HANDLE)
+      , fill_signal_sem (/*backend::vulkan::render_thread_create_semaphore(device)*/VK_NULL_HANDLE)
+      , render_finished_sem (/*backend::vulkan::render_thread_create_semaphore(device)*/VK_NULL_HANDLE)
+      , acquire_fence (/*backend::vulkan::render_thread_create_fence(device)*/VK_NULL_HANDLE)
+      , fill_fence (/*backend::vulkan::render_thread_create_fence(device)*/VK_NULL_HANDLE)
+      , render_fence (/*backend::vulkan::render_thread_create_fence(device)*/VK_NULL_HANDLE)
+      , fill_command (VK_NULL_HANDLE), render_command (VK_NULL_HANDLE)
+      , texture_descriptors (texture_descriptors)
       , component_ssbo_buffer (component_ssbo_buffer)
       , indirect_draw_buffer (indirect_draw_buffer)
-      , execution_finished (execution_finished)
-        //, render_finished (render_finished)
       , in_use_mutex {}
       , is_in_use (false)
-    {}
+    {
+      
+    }
     
     swapchain_specific_information (swapchain_specific_information&& other)
-      : framebuffers_damaged_regions (std::move(other.framebuffers_damaged_regions))
+      : image_available_sem (other.image_available_sem), fill_signal_sem (other.fill_signal_sem)
+      , render_finished_sem (other.render_finished_sem), acquire_fence (other.acquire_fence)
+      , fill_fence (other.fill_fence), render_fence (other.render_fence)
+      , framebuffers_damaged_regions (std::move(other.framebuffers_damaged_regions))
+      , fill_command (other.fill_command), render_command (other.render_command)
       , transfer_pending_operations (std::move(other.transfer_pending_operations))
-      , command_buffer_in_use (std::move(other.command_buffer_in_use))
       , texture_descriptors (std::move(other.texture_descriptors))
       , component_ssbo_buffer (std::move(other.component_ssbo_buffer))
       , indirect_draw_buffer (std::move(other.indirect_draw_buffer))
-      , execution_finished (std::move(other.execution_finished))
       , buffer_is_dirty (std::move(other.buffer_is_dirty))
-        //, render_finished (std::move(other.render_finished))
       , in_use_mutex {}
       , is_in_use (other.is_in_use)
     {}

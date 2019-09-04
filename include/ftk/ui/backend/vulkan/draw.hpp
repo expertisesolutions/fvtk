@@ -317,11 +317,11 @@ record (toplevel_window<Backend>& toplevel
 
 template <typename Backend>
 void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
-           , VkSemaphore image_available, VkSemaphore render_finished);
+           /*, VkSemaphore image_available, VkSemaphore render_finished*/);
 
 template <typename Backend>
 void present (toplevel_window<Backend>& toplevel, uint32_t image_index
-              , VkSemaphore render_finished);
+              /*, VkSemaphore render_finished*/);
 
 template <typename Backend>
 void debug_ssbo_buffer (toplevel_window<Backend>& toplevel, uint32_t image_index);
@@ -341,16 +341,20 @@ void draw_and_present (toplevel_window<Backend>& toplevel, bool debug_ssbo = fal
   if (r != vulkan_error_code::success)
     throw std::system_error (make_error_code (r));
 
-  VkSemaphore render_finished = render_thread_create_semaphore (toplevel.window.voutput.device);
-  draw (toplevel, image_index, image_available, render_finished);
-  present (toplevel, image_index, render_finished);
+  std::swap(toplevel.swapchain_info[image_index].image_available_sem, image_available);
+  if (image_available != VK_NULL_HANDLE)
+    vkDestroySemaphore (toplevel.window.voutput.device, image_available, nullptr);
+
+  //VkSemaphore render_finished = render_thread_create_semaphore (toplevel.window.voutput.device);
+  draw (toplevel, image_index/*, render_finished*/);
+  present (toplevel, image_index/*, render_finished*/);
   if (debug_ssbo)
     debug_ssbo_buffer (toplevel, image_index);
 }
 
 template <typename Backend>
 void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
-           , VkSemaphore image_available, VkSemaphore render_finished)
+           /*, VkSemaphore image_available, VkSemaphore render_finished*/)
 {
   using fastdraw::output::vulkan::from_result;
   using fastdraw::output::vulkan::vulkan_error_code;
@@ -369,6 +373,12 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
     toplevel.swapchain_info[image_index].transfer_pending_operations.clear();
   }
 
+  if (toplevel.swapchain_info[image_index].render_finished_sem != VK_NULL_HANDLE)
+    vkDestroySemaphore (toplevel.window.voutput.device, toplevel.swapchain_info[image_index].render_finished_sem, nullptr);
+
+  toplevel.swapchain_info[image_index].render_finished_sem
+    = render_thread_create_semaphore (toplevel.window.voutput.device);
+
   if (toplevel.swapchain_info[image_index].buffer_is_dirty)
   {
     //toplevel.swapchain_info[image_index].buffer_is_dirty = false;
@@ -385,7 +395,7 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
   VkSubmitInfo submitInfo = {};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
                              
-  VkSemaphore waitSemaphores[] = {image_available};
+  VkSemaphore waitSemaphores[] = {toplevel.swapchain_info[image_index].image_available_sem};
   VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
   submitInfo.waitSemaphoreCount = 1;
   submitInfo.pWaitSemaphores = waitSemaphores;
@@ -393,7 +403,7 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
   submitInfo.commandBufferCount = buffers.size();
   submitInfo.pCommandBuffers = &buffers[0];
 
-  VkSemaphore signalSemaphores[] = {render_finished};
+  VkSemaphore signalSemaphores[] = {toplevel.swapchain_info[image_index].render_finished_sem};
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores = signalSemaphores;
   using fastdraw::output::vulkan::from_result;
@@ -438,13 +448,13 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
 
 template <typename Backend>
 void present (toplevel_window<Backend>& toplevel, uint32_t image_index
-              , VkSemaphore render_finished)
+              /*, VkSemaphore render_finished*/)
 {
   {
     VkPresentInfoKHR presentInfo = {};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-    VkSemaphore waitSemaphores[] = {render_finished};
+    VkSemaphore waitSemaphores[] = {toplevel.swapchain_info[image_index].render_finished_sem};
          
     presentInfo.waitSemaphoreCount = 1;
     presentInfo.pWaitSemaphores = waitSemaphores;
