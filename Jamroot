@@ -193,8 +193,13 @@ for local file in $(shader_sources)
   local chars =  [ string.chars $(file:S) ] ;
   local suffix = $(chars[2-]:J="") ;
   local target = $(file:B)_$(suffix) ;
+  local requirements ;
+  if $(suffix) = vert
+  {
+    requirements += <define>VERTEX_SHADER ;
+  }
   shader_targets += $(target) ;
-  glslang $(target) : $(file) : <include>res/shader/vulkan ;
+  glslang $(target) : $(file) : <include>res/shader/vulkan $(requirements) ;
 }
 
 alias shaders : $(shader_targets) ;
