@@ -330,8 +330,6 @@ struct toplevel_window
   {
     std::int32_t old_x = component->x
       , old_y = component->y;
-    component->must_draw[0] = true;
-    component->must_draw[1] = true;
     component->x = x;
     component->y = y;
 

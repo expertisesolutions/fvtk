@@ -356,21 +356,17 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
   using fastdraw::output::vulkan::vulkan_error_code;
 
   // in the wrong place
+  std::unique_lock<std::mutex> l (toplevel.swapchain_info[image_index].in_use_mutex);
   {
-    std::unique_lock<std::mutex> l (toplevel.swapchain_info[image_index].in_use_mutex);
     toplevel.swapchain_info[image_index].is_in_use = true;
-    //assert (toplevel.swapchain_info[image_index].transfer_pending_operations.empty());
-    if (!toplevel.swapchain_info[image_index].transfer_pending_operations.empty())
+    for (auto&& op : toplevel.swapchain_info[image_index].transfer_pending_operations)
     {
-      for (auto&& op : toplevel.swapchain_info[image_index].transfer_pending_operations)
-      {
-        std::visit([&] (auto&& op)
-                   {
-                     toplevel.transfer_operation (op, toplevel.swapchain_info[image_index], image_index);
-                   }, op.operation);
-      }
-      toplevel.swapchain_info[image_index].transfer_pending_operations.clear();
+      std::visit([&] (auto&& op)
+                 {
+                   toplevel.transfer_operation (op, toplevel.swapchain_info[image_index], image_index);
+                 }, op.operation);
     }
+    toplevel.swapchain_info[image_index].transfer_pending_operations.clear();
   }
 
   if (toplevel.swapchain_info[image_index].buffer_is_dirty)
@@ -380,6 +376,7 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
   }
 
   auto framebuffer_damaged_regions = calculate_regions (toplevel, image_index);
+  l.unlock();
   std::vector<VkCommandBuffer> buffers = record (toplevel, framebuffer_damaged_regions, image_index);
 
   //toplevel.swapchain_info[image_index].buffer_is_dirty = false;
