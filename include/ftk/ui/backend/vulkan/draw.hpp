@@ -22,82 +22,90 @@
 namespace ftk { namespace ui { namespace backend { namespace vulkan {
 
 template <typename Backend>
-void fill_buffer (VkSemaphore semaphore, toplevel_window<Backend>& toplevel
+void fill_buffer (VkSemaphore wait_semaphore, VkSemaphore signal_semaphore, toplevel_window<Backend>& toplevel
                   , uint32_t image_index)
 {
   using fastdraw::output::vulkan::from_result;
   using fastdraw::output::vulkan::vulkan_error_code;
-  
-  VkFence initialization_fence;
-  VkFenceCreateInfo fenceInfo = {};
-  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-  auto r = from_result (vkCreateFence (toplevel.window.voutput.device, &fenceInfo, nullptr, &initialization_fence));
-  if (r != vulkan_error_code::success)
-    throw std::system_error(make_error_code(r));
 
-  VkCommandPool command_pool = toplevel.window.voutput.command_pool;
-  VkCommandBuffer command_buffer;
+  if (toplevel.swapchain_info[image_index].fill_command == VK_NULL_HANDLE)
+  {
+    assert (toplevel.swapchain_info[image_index].fill_fence == VK_NULL_HANDLE);
+    
+    VkFenceCreateInfo fenceInfo = {};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    auto r = from_result (vkCreateFence (toplevel.window.voutput.device, &fenceInfo, nullptr
+                                         , &toplevel.swapchain_info[image_index].fill_fence));
+    if (r != vulkan_error_code::success)
+      throw std::system_error(make_error_code(r));
 
-  VkCommandBufferAllocateInfo allocInfo = {};
-  allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  allocInfo.commandPool = command_pool;
-  allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocInfo.commandBufferCount = 1;
+    VkCommandPool command_pool = toplevel.window.voutput.command_pool;
 
-  r = from_result (vkAllocateCommandBuffers(toplevel.window.voutput.device, &allocInfo
-                                            , &command_buffer));
-  if (r != vulkan_error_code::success)
-    throw std::system_error(make_error_code (r));
+    VkCommandBufferAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = command_pool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = 1;
+    r = from_result (vkAllocateCommandBuffers(toplevel.window.voutput.device, &allocInfo
+                                              , &toplevel.swapchain_info[image_index].fill_command));
+    if (r != vulkan_error_code::success)
+      throw std::system_error(make_error_code (r));
 
-  VkCommandBufferBeginInfo beginInfo = {};
-  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-  r = from_result (vkBeginCommandBuffer(command_buffer, &beginInfo));
-  if (r != vulkan_error_code::success)
-    throw std::system_error(make_error_code(r));
+    VkCommandBuffer command_buffer = toplevel.swapchain_info[image_index].fill_command;
 
-  // fill everything with 0's first
-  vkCmdFillBuffer (command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    //beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    r = from_result (vkBeginCommandBuffer(command_buffer, &beginInfo));
+    if (r != vulkan_error_code::success)
+      throw std::system_error(make_error_code(r));
+
+    // fill everything with 0's first
+    vkCmdFillBuffer (command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
                    , 0 /* offset */, (6 + 4096 + 4096) * sizeof(uint32_t)
                    * toplevel.indirect_draw_info_array_size
                    , 0);
-  for (std::size_t i = 0; i != toplevel.indirect_draw_info_array_size; ++i)
-  {
-    // vertex count filling
-    vkCmdFillBuffer (command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
-                     , (6 + 4096 + 4096) * sizeof(uint32_t) * i, sizeof (uint32_t), 6);
-    // fill fg_zindex array
-    vkCmdFillBuffer (command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
-                     , (6 + 4096 + 4096) * sizeof(uint32_t) * i
-                     + (6 + 4096) * sizeof(uint32_t)
-                     , sizeof (uint32_t) * 4096, 0xFFFFFFFF);
-  }
+    for (std::size_t i = 0; i != toplevel.indirect_draw_info_array_size; ++i)
+    {
+      // vertex count filling
+      vkCmdFillBuffer (command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
+                       , (6 + 4096 + 4096) * sizeof(uint32_t) * i, sizeof (uint32_t), 6);
+      // fill fg_zindex array
+      vkCmdFillBuffer (command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
+                       , (6 + 4096 + 4096) * sizeof(uint32_t) * i
+                       + (6 + 4096) * sizeof(uint32_t)
+                       , sizeof (uint32_t) * 4096, 0xFFFFFFFF);
+    }
   
-  r = from_result (vkEndCommandBuffer(command_buffer));
-  if (r != vulkan_error_code::success)
-    throw std::system_error(make_error_code(r));
+    r = from_result (vkEndCommandBuffer(command_buffer));
+    if (r != vulkan_error_code::success)
+      throw std::system_error(make_error_code(r));
+  }
 
   VkSubmitInfo submitInfo = {};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &command_buffer;
-  if (semaphore != VK_NULL_HANDLE)
+  submitInfo.pCommandBuffers = &toplevel.swapchain_info[image_index].fill_command;
+  if (signal_semaphore != VK_NULL_HANDLE)
   {
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &semaphore;
+    submitInfo.pSignalSemaphores = &signal_semaphore;
+  }
+  if (wait_semaphore != VK_NULL_HANDLE)
+  {
+    VkPipelineStageFlags masks[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submitInfo.pWaitDstStageMask = masks;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &wait_semaphore;
   }
 
   {
     ftk::ui::backend::vulkan::queues::lock_graphic_queue lock_queue(toplevel.window.queues);
-    r = from_result(vkQueueSubmit(lock_queue.get_queue().vkqueue, 1, &submitInfo, initialization_fence));
-  }
-  {
-    r = from_result(vkWaitForFences(toplevel.window.voutput.device, 1, &initialization_fence, false, -1));
+    auto r = from_result(vkQueueSubmit(lock_queue.get_queue().vkqueue, 1, &submitInfo
+                                       , toplevel.swapchain_info[image_index].fill_fence));
     if (r != vulkan_error_code::success)
       throw std::system_error (make_error_code (r));
   }
-  if (r != vulkan_error_code::success)
-    throw std::system_error(make_error_code (r));
 }
 
 // still damage calculation problems
@@ -384,13 +392,15 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
     toplevel.swapchain_info[image_index].transfer_pending_operations.clear();
   }
 
-  if (toplevel.swapchain_info[image_index].render_finished_sem != VK_NULL_HANDLE)
-    vkDestroySemaphore (toplevel.window.voutput.device, toplevel.swapchain_info[image_index].render_finished_sem, nullptr);
+  // must destroy in fences
+  // if (toplevel.swapchain_info[image_index].render_finished_sem != VK_NULL_HANDLE)
+  //   vkDestroySemaphore (toplevel.window.voutput.device, toplevel.swapchain_info[image_index].render_finished_sem, nullptr);
   toplevel.swapchain_info[image_index].render_finished_sem
     = render_thread_create_semaphore (toplevel.window.voutput.device);
 
-  if (toplevel.swapchain_info[image_index].fill_signal_sem != VK_NULL_HANDLE)
-    vkDestroySemaphore (toplevel.window.voutput.device, toplevel.swapchain_info[image_index].fill_signal_sem, nullptr);
+  // must destroy in fences
+  // if (toplevel.swapchain_info[image_index].fill_signal_sem != VK_NULL_HANDLE)
+  //   vkDestroySemaphore (toplevel.window.voutput.device, toplevel.swapchain_info[image_index].fill_signal_sem, nullptr);
   toplevel.swapchain_info[image_index].fill_signal_sem
     = render_thread_create_semaphore (toplevel.window.voutput.device);
 
@@ -398,7 +408,9 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
   //if (toplevel.swapchain_info[image_index].buffer_is_dirty)
   {
     //toplevel.swapchain_info[image_index].buffer_is_dirty = false;
-    fill_buffer (toplevel.swapchain_info[image_index].fill_signal_sem, toplevel, image_index);
+    fill_buffer (toplevel.swapchain_info[image_index].old_render_finished_sem
+                 , toplevel.swapchain_info[image_index].fill_signal_sem, toplevel, image_index);
+    //    vkDestroySemaphore (toplevel.window.voutput.device, toplevel.swapchain_info[image_index].render_finished_sem, nullptr);
   }
 
   auto framebuffer_damaged_regions = calculate_regions (toplevel, image_index);
@@ -408,20 +420,25 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
   //toplevel.swapchain_info[image_index].buffer_is_dirty = false;
   //fill_buffer (VK_NULL_HANDLE, toplevel, image_index);
 
+  toplevel.swapchain_info[image_index].old_render_finished_sem
+    = render_thread_create_semaphore (toplevel.window.voutput.device);
+  
   VkSubmitInfo submitInfo = {};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
                              
   VkSemaphore waitSemaphores[] = {toplevel.swapchain_info[image_index].image_available_sem
                                   , toplevel.swapchain_info[image_index].fill_signal_sem};
-  VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+  VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                                       , VK_PIPELINE_STAGE_TRANSFER_BIT};
   submitInfo.waitSemaphoreCount = 2;
   submitInfo.pWaitSemaphores = waitSemaphores;
   submitInfo.pWaitDstStageMask = waitStages;
   submitInfo.commandBufferCount = buffers.size();
   submitInfo.pCommandBuffers = &buffers[0];
 
-  VkSemaphore signalSemaphores[] = {toplevel.swapchain_info[image_index].render_finished_sem};
-  submitInfo.signalSemaphoreCount = 1;
+  VkSemaphore signalSemaphores[] = {toplevel.swapchain_info[image_index].render_finished_sem
+                                    , toplevel.swapchain_info[image_index].old_render_finished_sem};
+  submitInfo.signalSemaphoreCount = 2;
   submitInfo.pSignalSemaphores = signalSemaphores;
   using fastdraw::output::vulkan::from_result;
   using fastdraw::output::vulkan::vulkan_error_code;
@@ -464,8 +481,7 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
 }
 
 template <typename Backend>
-void present (toplevel_window<Backend>& toplevel, uint32_t image_index
-              /*, VkSemaphore render_finished*/)
+void present (toplevel_window<Backend>& toplevel, uint32_t image_index)
 {
   {
     VkPresentInfoKHR presentInfo = {};
@@ -488,31 +504,18 @@ void present (toplevel_window<Backend>& toplevel, uint32_t image_index
       using fastdraw::output::vulkan::from_result;
       using fastdraw::output::vulkan::vulkan_error_code;
       
-      auto now = std::chrono::high_resolution_clock::now();
-      
       auto r = from_result (vkQueuePresentKHR(lock_queue.get_queue().vkqueue, &presentInfo));
       if (r != vulkan_error_code::success)
         throw std::system_error (make_error_code (r));
-      
-      auto now2 = std::chrono::high_resolution_clock::now();
-      auto diff = now2 - now;
-      std::cout << "Time submitting presentation queue "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
-                << "ms" << std::endl;
 
-      /// still synchronization problems
-      r = from_result(vkQueueWaitIdle (lock_queue.get_queue().vkqueue));
-      if (r != vulkan_error_code::success)
-        throw std::system_error (make_error_code (r));
+      static auto last_now = std::chrono::high_resolution_clock::now();
+      auto now = std::chrono::high_resolution_clock::now();
+      std::cout << "Time between presentations "
+                << std::chrono::duration_cast<std::chrono::milliseconds>
+                   (now - last_now).count()
+                << "ms" << std::endl;
+      last_now = now;
     }
-           
-    // {
-    //   auto now = std::chrono::high_resolution_clock::now();
-    //   auto diff = now - queue_begin;
-    //   std::cout << "Time running drawing command "
-    //             << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
-    //             << "ms" << std::endl;
-    // }
     
   }
 }

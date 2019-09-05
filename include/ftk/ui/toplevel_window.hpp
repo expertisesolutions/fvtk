@@ -576,10 +576,10 @@ struct toplevel_window
     // 6 -> 7 implicit
     // 7 -> 8 render_finished_sem
     // 7 -> 9 render_fence
-    // 6 -> 2 render_finished_sem
+    // 6 -> 2 old_render_finished_sem
 
-    VkSemaphore image_available_sem, fill_signal_sem, render_finished_sem;
-    VkFence acquire_fence, fill_fence, render_fence;
+    VkSemaphore image_available_sem, fill_signal_sem, render_finished_sem, old_render_finished_sem;
+    VkFence acquire_fence, fill_fence, render_fence, presentation_fence;
 
     VkCommandBuffer fill_command, render_command;
 
@@ -606,6 +606,7 @@ struct toplevel_window
       : image_available_sem (VK_NULL_HANDLE)
       , fill_signal_sem (VK_NULL_HANDLE)
       , render_finished_sem (VK_NULL_HANDLE)
+      , old_render_finished_sem (VK_NULL_HANDLE)
       , acquire_fence (VK_NULL_HANDLE)
       , fill_fence (VK_NULL_HANDLE)
       , render_fence (VK_NULL_HANDLE)
@@ -622,7 +623,8 @@ struct toplevel_window
     
     swapchain_specific_information (swapchain_specific_information&& other)
       : image_available_sem (other.image_available_sem), fill_signal_sem (other.fill_signal_sem)
-      , render_finished_sem (other.render_finished_sem), acquire_fence (other.acquire_fence)
+      , render_finished_sem (other.render_finished_sem)
+      , old_render_finished_sem (other.old_render_finished_sem), acquire_fence (other.acquire_fence)
       , fill_fence (other.fill_fence), render_fence (other.render_fence)
       , fill_command (std::move(other.fill_command)), render_command (std::move(other.render_command))
       , framebuffers_damaged_regions (std::move(other.framebuffers_damaged_regions))
