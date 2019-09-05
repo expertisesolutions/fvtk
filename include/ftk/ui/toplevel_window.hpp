@@ -211,18 +211,17 @@ struct toplevel_window
   swapchain_specific_information swapchain_initialize (VkDevice device, VkImageView empty_image_view)
   {
     swapchain_specific_information v
-      {
-       device
-       , {window.voutput.device, image_pipeline.descriptorSetLayouts[0]
-                 , VkDescriptorImageInfo
-                 {nullptr, empty_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}}
+      (
+       /*device
+         , */backend::vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4096>
+         {window.voutput.device, image_pipeline.descriptorSetLayouts[0]
+            , VkDescriptorImageInfo
+            {nullptr, empty_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}}
         , allocate_buffer (sizeof(component_info)*4096, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
         , allocate_buffer (sizeof(indirect_draw_info)*indirect_draw_info_array_size
                            , VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT
                            | VK_BUFFER_USAGE_TRANSFER_DST_BIT)
-       , {}
-       , backend::vulkan::render_thread_create_semaphore (window.voutput.device)
-      };
+       );
     return v;
   }
   
@@ -345,8 +344,8 @@ struct toplevel_window
   }
   void move_component (component_iterator component, std::int32_t x, std::int32_t y)
   {
-    std::int32_t old_x = component->x
-      , old_y = component->y;
+    // std::int32_t old_x = component->x
+    //   , old_y = component->y;
     component->x = x;
     component->y = y;
 
@@ -598,20 +597,23 @@ struct toplevel_window
     std::mutex in_use_mutex;
     bool is_in_use;
 
-    swapchain_specific_information (VkDevice device
-                                    , backend::vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4096> texture_descriptors
-                                    , VkBuffer component_ssbo_buffer, VkBuffer indirect_draw_buffer
-                                    , VkFence execution_finished, VkSemaphore render_finished)
-      : image_available_sem (/*backend::vulkan::render_thread_create_semaphore(device)*/VK_NULL_HANDLE)
-      , fill_signal_sem (/*backend::vulkan::render_thread_create_semaphore(device)*/VK_NULL_HANDLE)
-      , render_finished_sem (/*backend::vulkan::render_thread_create_semaphore(device)*/VK_NULL_HANDLE)
-      , acquire_fence (/*backend::vulkan::render_thread_create_fence(device)*/VK_NULL_HANDLE)
-      , fill_fence (/*backend::vulkan::render_thread_create_fence(device)*/VK_NULL_HANDLE)
-      , render_fence (/*backend::vulkan::render_thread_create_fence(device)*/VK_NULL_HANDLE)
+    swapchain_specific_information (swapchain_specific_information const&) = delete;
+    swapchain_specific_information& operator= (swapchain_specific_information const&) = delete;
+    swapchain_specific_information& operator= (swapchain_specific_information&&) = delete;
+    swapchain_specific_information (/*VkDevice device
+                                      , */backend::vulkan::descriptor_fixed_array<VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4096> texture_descriptors
+                                    , VkBuffer component_ssbo_buffer, VkBuffer indirect_draw_buffer)
+      : image_available_sem (VK_NULL_HANDLE)
+      , fill_signal_sem (VK_NULL_HANDLE)
+      , render_finished_sem (VK_NULL_HANDLE)
+      , acquire_fence (VK_NULL_HANDLE)
+      , fill_fence (VK_NULL_HANDLE)
+      , render_fence (VK_NULL_HANDLE)
       , fill_command (VK_NULL_HANDLE), render_command (VK_NULL_HANDLE)
       , texture_descriptors (texture_descriptors)
       , component_ssbo_buffer (component_ssbo_buffer)
       , indirect_draw_buffer (indirect_draw_buffer)
+      , buffer_is_dirty (true)
       , in_use_mutex {}
       , is_in_use (false)
     {
@@ -622,8 +624,8 @@ struct toplevel_window
       : image_available_sem (other.image_available_sem), fill_signal_sem (other.fill_signal_sem)
       , render_finished_sem (other.render_finished_sem), acquire_fence (other.acquire_fence)
       , fill_fence (other.fill_fence), render_fence (other.render_fence)
+      , fill_command (std::move(other.fill_command)), render_command (std::move(other.render_command))
       , framebuffers_damaged_regions (std::move(other.framebuffers_damaged_regions))
-      , fill_command (other.fill_command), render_command (other.render_command)
       , transfer_pending_operations (std::move(other.transfer_pending_operations))
       , texture_descriptors (std::move(other.texture_descriptors))
       , component_ssbo_buffer (std::move(other.component_ssbo_buffer))
@@ -631,7 +633,10 @@ struct toplevel_window
       , buffer_is_dirty (std::move(other.buffer_is_dirty))
       , in_use_mutex {}
       , is_in_use (other.is_in_use)
-    {}
+    {
+      other.fill_command = VK_NULL_HANDLE;
+      other.render_command = VK_NULL_HANDLE;
+    }
   };
 
   std::list<window_component> components;

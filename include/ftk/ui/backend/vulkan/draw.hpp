@@ -347,7 +347,18 @@ void draw_and_present (toplevel_window<Backend>& toplevel, bool debug_ssbo = fal
 
   //VkSemaphore render_finished = render_thread_create_semaphore (toplevel.window.voutput.device);
   draw (toplevel, image_index/*, render_finished*/);
-  present (toplevel, image_index/*, render_finished*/);
+  try {
+    present (toplevel, image_index/*, render_finished*/);
+  }
+  catch (...)
+  {
+    if (debug_ssbo)
+    {
+      std::cout << "debugging after error" << std::endl;
+      debug_ssbo_buffer (toplevel, image_index);
+    }
+    throw;
+  }
   if (debug_ssbo)
     debug_ssbo_buffer (toplevel, image_index);
 }
@@ -375,14 +386,19 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
 
   if (toplevel.swapchain_info[image_index].render_finished_sem != VK_NULL_HANDLE)
     vkDestroySemaphore (toplevel.window.voutput.device, toplevel.swapchain_info[image_index].render_finished_sem, nullptr);
-
   toplevel.swapchain_info[image_index].render_finished_sem
     = render_thread_create_semaphore (toplevel.window.voutput.device);
 
-  if (toplevel.swapchain_info[image_index].buffer_is_dirty)
+  if (toplevel.swapchain_info[image_index].fill_signal_sem != VK_NULL_HANDLE)
+    vkDestroySemaphore (toplevel.window.voutput.device, toplevel.swapchain_info[image_index].fill_signal_sem, nullptr);
+  toplevel.swapchain_info[image_index].fill_signal_sem
+    = render_thread_create_semaphore (toplevel.window.voutput.device);
+
+  assert (toplevel.swapchain_info[image_index].buffer_is_dirty);
+  //if (toplevel.swapchain_info[image_index].buffer_is_dirty)
   {
     //toplevel.swapchain_info[image_index].buffer_is_dirty = false;
-    fill_buffer (VK_NULL_HANDLE, toplevel, image_index);
+    fill_buffer (toplevel.swapchain_info[image_index].fill_signal_sem, toplevel, image_index);
   }
 
   auto framebuffer_damaged_regions = calculate_regions (toplevel, image_index);
@@ -395,9 +411,10 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
   VkSubmitInfo submitInfo = {};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
                              
-  VkSemaphore waitSemaphores[] = {toplevel.swapchain_info[image_index].image_available_sem};
+  VkSemaphore waitSemaphores[] = {toplevel.swapchain_info[image_index].image_available_sem
+                                  , toplevel.swapchain_info[image_index].fill_signal_sem};
   VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-  submitInfo.waitSemaphoreCount = 1;
+  submitInfo.waitSemaphoreCount = 2;
   submitInfo.pWaitSemaphores = waitSemaphores;
   submitInfo.pWaitDstStageMask = waitStages;
   submitInfo.commandBufferCount = buffers.size();

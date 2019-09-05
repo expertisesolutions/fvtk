@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
   std::cout << "w width " << w.window.voutput.swapChainExtent.width << std::endl;
   
   w.append_rectangle (10, 10, 200, 200, {0, 255, 0, 255});
-  ftk::ui::backend::vulkan::draw_and_present (w);
+  ftk::ui::backend::vulkan::draw_and_present (w, true);
 
   ftk::ui::backend::uv::timer_wait
     (backend.loop

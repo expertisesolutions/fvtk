@@ -74,7 +74,7 @@ int main(int argc, char* argv[])
   w.append_rectangle (0, 0, 600, 500, {0, 0, 255, 255});
   w.append_rectangle (600, 500, 600, 500, {0, 0, 255, 255});
   auto image_iterator = w.append_image (10, 10, 200, 200, image.get().image_view);
-  ftk::ui::backend::vulkan::draw_and_present (w);
+  ftk::ui::backend::vulkan::draw_and_present (w, true);
 
   std::size_t x = 10, y = 10;
   
@@ -85,7 +85,7 @@ int main(int argc, char* argv[])
      , [&] (uv_timer_t* timer)
        {
          w.move_component (image_iterator, x += 10, y += 10);
-         ftk::ui::backend::vulkan::draw_and_present (w);
+         ftk::ui::backend::vulkan::draw_and_present (w, true);
        });  
 
   ftk::ui::backend::uv::timer_wait
