@@ -7,16 +7,16 @@
 // See http://www.boost.org/libs/foreach for documentation
 //
 
+#include <ftk/ui/backend/uv/uv_loop.hpp>
 #include <ftk/ui/toplevel_window.hpp>
-#include <ftk/ui/text_box.hpp>
-#include <uv.h>
+#include <ftk/ui/backend/vulkan/text.hpp>
 
-#include <ftk/ui/backend/vulkan.hpp>
-#include <ftk/ui/backend/x11_base.hpp>
+#include <ftk/ui/backend/vulkan_backend.hpp>
+#include <ftk/ui/backend/x11_base_backend.hpp>
 #include <ftk/ui/backend/uv/uv_loop.hpp>
 #include <ftk/ui/backend/uv/timer.hpp>
-#include <ftk/ui/backend/vulkan_draw.hpp>
-#include <ftk/ui/backend/vulkan.ipp>
+#include <ftk/ui/backend/vulkan/draw.hpp>
+#include <ftk/ui/backend/vulkan_backend.ipp>
 
 #include <filesystem>
 
@@ -35,19 +35,19 @@ int main(int argc, char* argv[])
 
   std::cout << "resource path " << res_path << std::endl;
 
-  typedef ftk::ui::backend::vulkan<ftk::ui::backend::uv::uv_loop, ftk::ui::backend::xlib_surface<ftk::ui::backend::uv::uv_loop>> backend_type;
+  typedef ftk::ui::backend::vulkan_backend<ftk::ui::backend::uv::uv_loop, ftk::ui::backend::xlib_surface_backend<ftk::ui::backend::uv::uv_loop>> backend_type;
   backend_type backend({&loop});
 
   auto vulkan_window = backend.create_window(1280, 1000, res_path);
   
   typedef pc::inplace_executor_t executor_type;
-  ftk::ui::backend::vulkan_submission_pool<executor_type>
+  ftk::ui::backend::vulkan::submission_pool<executor_type>
     vulkan_submission_pool (vulkan_window.voutput.device
                             , &vulkan_window.queues
                             , pc::inplace_executor
                             , 1 /* thread count */);
 
-  auto empty_image = ftk::ui::backend::load_empty_image_view
+  auto empty_image = ftk::ui::backend::vulkan::load_empty_image_view
     (vulkan_window.voutput.device, vulkan_window.voutput.physical_device
      , vulkan_submission_pool).get();
   
@@ -55,8 +55,31 @@ int main(int argc, char* argv[])
 
   std::cout << "w width " << w.window.voutput.swapChainExtent.width << std::endl;
   
-  w.append_component ({10, 10, 200, 200, ftk::ui::rectangle_component{{255, 0, 0, 255}}});
-  draw (w);
+  // w.append_image (10, 10, 200, 200, "text");
+  // ftk::ui::backend::vulkan::draw_and_present (w, true);
+
+  FT_Library ft_library;
+
+  auto error = FT_Init_FreeType( &ft_library );
+  if (error)
+  {
+    std::cout << "Failed freetype initialization" << std::endl;
+    throw -1;
+  }
+  
+  FT_Face face;
+  error = FT_New_Face (ft_library, "/usr/share/fonts/TTF/DejaVuSans.ttf", 0, &face);
+  if (error)
+  {
+    std::cout << "error " << error << std::endl;
+    throw -1;
+  }
+
+  auto text_image = ftk::ui::backend::vulkan::load_text
+    (ft_library, face, 100, vulkan_window.voutput.device
+     , vulkan_window.voutput.physical_device, "Text");
+
+  ftk::ui::backend::vulkan::draw_and_present (w, true);
   
   ftk::ui::backend::uv::timer_wait
     (backend.loop
@@ -65,7 +88,7 @@ int main(int argc, char* argv[])
        {
          uv_stop (&loop);
        });  
-
+  
   uv_run(&loop, UV_RUN_DEFAULT);
 
   uv_loop_close(&loop);

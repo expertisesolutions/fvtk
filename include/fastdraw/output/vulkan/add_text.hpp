@@ -160,10 +160,12 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
   hb_shape(hb_font, buffer, &feature, 1);
 
 
-  int glyph_count = hb_buffer_get_length(buffer);
-  hb_glyph_info_t *glyph_info = hb_buffer_get_glyph_infos(buffer, 0);
+  unsigned int glyph_info_count = 0;
+  hb_glyph_info_t *glyph_info = hb_buffer_get_glyph_infos(buffer, &glyph_info_count);
+  unsigned int glyph_pos_count = 0;
+  hb_glyph_position_t *glyph_pos = hb_buffer_get_glyph_positions(buffer, &glyph_pos_count);
 
-  std::cout << "glyph count " << glyph_count << std::endl;
+  std::cout << "glyph count " << glyph_info_count << std::endl;
 
   if (FT_HAS_KERNING (face))
   {
@@ -187,7 +189,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
   std::fill (static_cast<uint32_t*>(data), static_cast<uint32_t*>(data) + texture_width * texture_height
              , 0x00000000);
 
-  for (int i = 0; i != glyph_count; ++i) 
+  for (int i = 0; i != glyph_info_count; ++i) 
   {
     FT_UInt glyph_index = glyph_info[i].codepoint;
     FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT);

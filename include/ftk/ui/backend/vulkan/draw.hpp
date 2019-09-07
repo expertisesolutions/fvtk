@@ -32,13 +32,6 @@ void fill_buffer (VkSemaphore wait_semaphore, VkSemaphore signal_semaphore, topl
   {
     assert (toplevel.swapchain_info[image_index].fill_fence == VK_NULL_HANDLE);
     
-    VkFenceCreateInfo fenceInfo = {};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    auto r = from_result (vkCreateFence (toplevel.window.voutput.device, &fenceInfo, nullptr
-                                         , &toplevel.swapchain_info[image_index].fill_fence));
-    if (r != vulkan_error_code::success)
-      throw std::system_error(make_error_code(r));
-
     VkCommandPool command_pool = toplevel.window.voutput.command_pool;
 
     VkCommandBufferAllocateInfo allocInfo = {};
@@ -46,8 +39,8 @@ void fill_buffer (VkSemaphore wait_semaphore, VkSemaphore signal_semaphore, topl
     allocInfo.commandPool = command_pool;
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocInfo.commandBufferCount = 1;
-    r = from_result (vkAllocateCommandBuffers(toplevel.window.voutput.device, &allocInfo
-                                              , &toplevel.swapchain_info[image_index].fill_command));
+    auto r = from_result (vkAllocateCommandBuffers(toplevel.window.voutput.device, &allocInfo
+                                                   , &toplevel.swapchain_info[image_index].fill_command));
     if (r != vulkan_error_code::success)
       throw std::system_error(make_error_code (r));
 
@@ -78,6 +71,28 @@ void fill_buffer (VkSemaphore wait_semaphore, VkSemaphore signal_semaphore, topl
     }
   
     r = from_result (vkEndCommandBuffer(command_buffer));
+    if (r != vulkan_error_code::success)
+      throw std::system_error(make_error_code(r));
+  }
+
+  if (toplevel.swapchain_info[image_index].fill_fence != VK_NULL_HANDLE)
+  {
+    auto r = from_result(vkWaitForFences(toplevel.window.voutput.device, 1
+                                    , &toplevel.swapchain_info[image_index].fill_fence, false, -1));
+    if (r != vulkan_error_code::success)
+      throw std::system_error (make_error_code (r));
+
+    r = from_result(vkResetFences(toplevel.window.voutput.device, 1
+                                    , &toplevel.swapchain_info[image_index].fill_fence));
+    if (r != vulkan_error_code::success)
+      throw std::system_error (make_error_code (r));
+  }
+  else
+  {
+    VkFenceCreateInfo fenceInfo = {};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    auto r = from_result (vkCreateFence (toplevel.window.voutput.device, &fenceInfo, nullptr
+                                       , &toplevel.swapchain_info[image_index].fill_fence));
     if (r != vulkan_error_code::success)
       throw std::system_error(make_error_code(r));
   }
@@ -171,20 +186,21 @@ record (toplevel_window<Backend>& toplevel
   
   VkCommandPool commandPool = toplevel.window.voutput.command_pool;
 
-  std::vector<VkCommandBuffer> damaged_command_buffers;
+  //std::vector<VkCommandBuffer> damaged_command_buffers;
 
-  damaged_command_buffers.resize (framebuffer_damaged_regions.size());
+  // damaged_command_buffers.resize (framebuffer_damaged_regions.size());
          
   VkCommandBufferAllocateInfo allocInfo = {};
   allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   allocInfo.commandPool = commandPool;
   allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocInfo.commandBufferCount = damaged_command_buffers.size();
+  // allocInfo.commandBufferCount = damaged_command_buffers.size();
+  allocInfo.commandBufferCount = 1;
 
-  if (!damaged_command_buffers.empty())
+  // if (!damaged_command_buffers.empty())
   {
     auto r = from_result (vkAllocateCommandBuffers(toplevel.window.voutput.device, &allocInfo
-                                                   , &damaged_command_buffers[0]));
+                                                   , &toplevel.swapchain_info[image_index].render_command));
     if (r != vulkan_error_code::success)
       throw std::system_error(make_error_code (r));
   }
@@ -194,7 +210,8 @@ record (toplevel_window<Backend>& toplevel
   int i = 0;
   for (auto&& region : framebuffer_damaged_regions)
   {
-    auto damaged_command_buffer = damaged_command_buffers[i];
+    //auto damaged_command_buffer = damaged_command_buffers[i];
+    auto damaged_command_buffer = toplevel.swapchain_info[image_index].render_command;
 
     auto x = region.x;
     auto y = region.y;
@@ -206,20 +223,23 @@ record (toplevel_window<Backend>& toplevel
     VkRenderPassBeginInfo renderPassInfo = {};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.framebuffer = toplevel.window.swapChainFramebuffers[image_index];
-    renderPassInfo.renderArea.offset = {x, y};
-    {
-      auto w = static_cast<uint32_t>(x) + width <= toplevel.window.voutput.swapChainExtent.width
-        ? width : toplevel.window.voutput.swapChainExtent.width - static_cast<uint32_t>(x);
-      auto h = static_cast<uint32_t>(y) + height <= toplevel.window.voutput.swapChainExtent.height
-        ? height : toplevel.window.voutput.swapChainExtent.height - static_cast<uint32_t>(y);
-      renderPassInfo.renderArea.extent = {w/* + image.x*/, h/* + image.y*/};
+    // renderPassInfo.renderArea.offset = {x, y};
+    // {
+    //   auto w = static_cast<uint32_t>(x) + width <= toplevel.window.voutput.swapChainExtent.width
+    //     ? width : toplevel.window.voutput.swapChainExtent.width - static_cast<uint32_t>(x);
+    //   auto h = static_cast<uint32_t>(y) + height <= toplevel.window.voutput.swapChainExtent.height
+    //     ? height : toplevel.window.voutput.swapChainExtent.height - static_cast<uint32_t>(y);
+    //   renderPassInfo.renderArea.extent = {w/* + image.x*/, h/* + image.y*/};
 
-      std::cout << "rendering to " << renderPassInfo.renderArea.offset.x
-                << "x" << renderPassInfo.renderArea.offset.y
-                << " size " << renderPassInfo.renderArea.extent.width
-                << "x" << renderPassInfo.renderArea.extent.height << std::endl;
-    }
+    //   std::cout << "rendering to " << renderPassInfo.renderArea.offset.x
+    //             << "x" << renderPassInfo.renderArea.offset.y
+    //             << " size " << renderPassInfo.renderArea.extent.width
+    //             << "x" << renderPassInfo.renderArea.extent.height << std::endl;
+    // }
     renderPassInfo.renderPass = toplevel.window.voutput.renderpass;
+    renderPassInfo.renderArea.offset = {x, y};
+    renderPassInfo.renderArea.extent = {toplevel.window.voutput.swapChainExtent.width
+                                        , toplevel.window.voutput.swapChainExtent.height};
 
     VkCommandBufferBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -320,7 +340,7 @@ record (toplevel_window<Backend>& toplevel
     ++i;
   }
 
-  return damaged_command_buffers;
+  return {toplevel.swapchain_info[image_index].render_command};
 }
 
 template <typename Backend>
