@@ -132,6 +132,12 @@ struct rectangle_component
   fastdraw::color::color_premultiplied_rgba<uint8_t> color;
 };
 
+template <typename P = fastdraw::point<std::int32_t>>
+struct arc_quadractic_component
+{
+  P p0,p1,p2;
+};
+
 template <std::size_t swapchain_image_count>
 struct toplevel_window_component
 {
@@ -269,6 +275,22 @@ struct toplevel_window
     dst_color = dst_color.blend_with_src (color);
     typename component_operation::append_rectangle_operation op
       {x, y, w, h, {dst_color.red(), dst_color.green(), dst_color.blue(), dst_color.alpha()}
+       , /*reverse index */ std::distance(it, components.end())-1};
+    queue_operation(op);
+
+    return it;
+  }
+  component_iterator append_arc_quadractic (fastdraw::point<std::int32_t> p0, fastdraw::point<std::int32_t> p1, fastdraw::point<std::int32_t> p2)
+  {
+    //auto texture_descriptor_index = create_new_zindex();
+    window_component component
+      = {p0.x, p0.y, p2.x, p2.y, arc_quadractic_component<>{p0,p1,p2}};
+
+    std::cout << "appending arc quadractic in " << component.x << "x" << component.y << std::endl;
+    auto it = components.insert(components.begin(), component);
+
+    typename component_operation::append_rectangle_operation op
+      {p0.x, p0.y, p2.x, p2.y, {p0,p1,p2}
        , /*reverse index */ std::distance(it, components.end())-1};
     queue_operation(op);
 
@@ -428,6 +450,11 @@ struct toplevel_window
       float color[4];
       std::uint32_t component_index;
     };
+    struct append_arc_quadractic_operation
+    {
+      fastdraw::point<std::int32_t> p0, p1, p2;
+      std::uint32_t component_index;
+    };
     struct replace_image_view_operation
     {
       component_iterator component;
@@ -471,6 +498,24 @@ struct toplevel_window
   }
 
   void transfer_operation (typename component_operation::append_rectangle_operation op, swapchain_specific_information& swapchain_info
+                           , unsigned int swapchain_index)
+  {
+    auto ssbo_data = buffer_allocator.map (swapchain_info.component_ssbo_buffer);
+
+    std::cout << "rectangle component_index " << op.component_index << std::endl;
+    auto component_info_ptr = static_cast<component_info*>(ssbo_data) + op.component_index;
+    *component_info_ptr = {0ul
+                           , static_cast<uint32_t>(op.x)
+                           , static_cast<uint32_t>(op.y)
+                           , static_cast<uint32_t>(op.w)
+                           , static_cast<uint32_t>(op.h), 1/*, 0*/, static_cast<int>(component_type::rectangle)};
+
+    component_info_ptr->component_data = rectangle_data {op.color[0], op.color[1], op.color[2], op.color[3]};
+
+    buffer_allocator.unmap (swapchain_info.component_ssbo_buffer);
+  }
+
+  void transfer_operation (typename component_operation::append_arc_quadractic_operation op, swapchain_specific_information& swapchain_info
                            , unsigned int swapchain_index)
   {
     auto ssbo_data = buffer_allocator.map (swapchain_info.component_ssbo_buffer);
