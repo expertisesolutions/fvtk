@@ -237,7 +237,8 @@ record (toplevel_window<Backend>& toplevel
     //             << "x" << renderPassInfo.renderArea.extent.height << std::endl;
     // }
     renderPassInfo.renderPass = toplevel.window.voutput.renderpass;
-    renderPassInfo.renderArea.offset = {x, y};
+    // renderPassInfo.renderArea.offset = {x, y};
+    renderPassInfo.renderArea.offset = {0, 0};
     renderPassInfo.renderArea.extent = {toplevel.window.voutput.swapChainExtent.width
                                         , toplevel.window.voutput.swapChainExtent.height};
 
@@ -557,10 +558,10 @@ void debug_ssbo_buffer (toplevel_window<Backend>& toplevel, uint32_t image_index
                 << " found alpha " << iterator->found_alpha
                 << " compnent type " << iterator->component_type
                 << " padding0 " << iterator->padding
-                << " padding.color[0] " << iterator->component_data.color[0]
-                << " padding.color[1] " << iterator->component_data.color[1]
-                << " padding.color[2] " << iterator->component_data.color[2]
-                << " padding.color[3] " << iterator->component_data.color[3]
+                << " padding.color[0] " << iterator->component_data.rectangle_data.color[0]
+                << " padding.color[1] " << iterator->component_data.rectangle_data.color[1]
+                << " padding.color[2] " << iterator->component_data.rectangle_data.color[2]
+                << " padding.color[3] " << iterator->component_data.rectangle_data.color[3]
                 << std::endl;
     };
     toplevel.buffer_allocator.unmap (toplevel.swapchain_info[image_index].component_ssbo_buffer);

@@ -14,6 +14,7 @@ struct component_info
   uint component_type;
   uint padding0;
   uint padding[4];
+  uint padding1[2];
 };
 
 layout  (std430, set = 2, binding = 0) READONLY buffer component_infos

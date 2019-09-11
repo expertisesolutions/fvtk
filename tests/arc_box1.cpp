@@ -55,17 +55,17 @@ int main(int argc, char* argv[])
 
   std::cout << "w width " << w.window.voutput.swapChainExtent.width << std::endl;
   
-  w.append_arc_quadractic_component
+  w.append_arc_quadractic
     ({10, 10}, {200, 200}, {300, 700});
   ftk::ui::backend::vulkan::draw_and_present (w, true);
   
-  // ftk::ui::backend::uv::timer_wait
-  //   (backend.loop
-  //    , 1000
-  //    , [&] (uv_timer_t* timer)
-  //      {
-  //        uv_stop (&loop);
-  //      });  
+  ftk::ui::backend::uv::timer_wait
+    (backend.loop
+     , 1000
+     , [&] (uv_timer_t* timer)
+       {
+         uv_stop (&loop);
+       });  
   
   uv_run(&loop, UV_RUN_DEFAULT);
 

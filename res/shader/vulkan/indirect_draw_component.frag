@@ -18,6 +18,7 @@ in vec4 gl_FragCoord;
 #include "image_ssbo.frag"
 #include "button_ssbo.frag"
 #include "rectangle_ssbo.frag"
+#include "arc_quadractic_ssbo.frag"
 
 void main() {
   uint component_index = indirect_draw.zindex[InstanceID];
@@ -35,6 +36,10 @@ void main() {
   {
     rectangle_draw_fragment (component_index);
     //outColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
+  }
+  else if (component_information.array[component_index].component_type == 3)
+  {
+    arc_quadractic_draw_fragment (component_index);
   }
 }
 

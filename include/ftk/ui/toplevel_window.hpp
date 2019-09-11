@@ -142,7 +142,7 @@ template <std::size_t swapchain_image_count>
 struct toplevel_window_component
 {
   std::int32_t x, y, width, height;
-  std::variant<image_component, button_component, rectangle_component> component_data;
+  std::variant<image_component, button_component, rectangle_component, arc_quadractic_component<>> component_data;
 
   bool must_draw[swapchain_image_count] = {true, true};
 
@@ -289,9 +289,8 @@ struct toplevel_window
     std::cout << "appending arc quadractic in " << component.x << "x" << component.y << std::endl;
     auto it = components.insert(components.begin(), component);
 
-    typename component_operation::append_rectangle_operation op
-      {p0.x, p0.y, p2.x, p2.y, {p0,p1,p2}
-       , /*reverse index */ std::distance(it, components.end())-1};
+    typename component_operation::append_arc_quadractic_operation op
+      {p0,p1,p2, /*reverse index */ std::distance(it, components.end())-1};
     queue_operation(op);
 
     return it;
@@ -386,7 +385,7 @@ struct toplevel_window
   
   enum class component_type
   {
-    image, button, rectangle
+    image, button, rectangle, arc_quadractic
   };
 
   struct image_data {};
@@ -395,8 +394,13 @@ struct toplevel_window
   {
     float color[4];
   };
+  struct arc_quadractic_data
+  {
+    fastdraw::point<int32_t> p0, p1, p2;
+  };
 
-  uint32_t get_component_type (std::variant<image_component, button_component, rectangle_component> const& v)
+  template <typename...C>
+  uint32_t get_component_type (std::variant<C...> const& v)
   {
     return v.index();
   }
@@ -410,7 +414,10 @@ struct toplevel_window
     uint32_t component_type;
     //std::variant <image_data, button_data, rectangle_data> component_data;
     uint32_t padding;
-    rectangle_data component_data;
+    union {
+      struct rectangle_data rectangle_data;
+      struct arc_quadractic_data arc_quadractic_data;
+    } component_data;
     //static_assert (sizeof (std::variant <image_data, button_data, rectangle_data>) == sizeof (float)*4 + sizeof(uint32_t), "");
 
     struct dummy
@@ -422,6 +429,7 @@ struct toplevel_window
       uint component_type;
       uint padding0;
       uint padding[4];
+      uint padding1[2];
     };
   };
   static_assert (sizeof (component_info) == sizeof (typename component_info::dummy), "");
@@ -471,6 +479,7 @@ struct toplevel_window
     };
     
     std::variant<append_image_operation, append_rectangle_operation
+                 , append_arc_quadractic_operation
                  //, replace_image_view_operation
                  //, remove_component_operation
                  , move_component_operation> operation;
@@ -510,7 +519,7 @@ struct toplevel_window
                            , static_cast<uint32_t>(op.w)
                            , static_cast<uint32_t>(op.h), 1/*, 0*/, static_cast<int>(component_type::rectangle)};
 
-    component_info_ptr->component_data = rectangle_data {op.color[0], op.color[1], op.color[2], op.color[3]};
+    component_info_ptr->component_data.rectangle_data = rectangle_data {op.color[0], op.color[1], op.color[2], op.color[3]};
 
     buffer_allocator.unmap (swapchain_info.component_ssbo_buffer);
   }
@@ -523,12 +532,14 @@ struct toplevel_window
     std::cout << "rectangle component_index " << op.component_index << std::endl;
     auto component_info_ptr = static_cast<component_info*>(ssbo_data) + op.component_index;
     *component_info_ptr = {0ul
-                           , static_cast<uint32_t>(op.x)
-                           , static_cast<uint32_t>(op.y)
-                           , static_cast<uint32_t>(op.w)
-                           , static_cast<uint32_t>(op.h), 1/*, 0*/, static_cast<int>(component_type::rectangle)};
+                           , static_cast<uint32_t>(op.p0.x)
+                           , static_cast<uint32_t>(op.p0.y)
+                           , static_cast<uint32_t>(op.p1.x)
+                           , static_cast<uint32_t>(op.p1.y), 1/*, 0*/, static_cast<int>(component_type::arc_quadractic)};
+                           // , static_cast<uint32_t>(op.p2.x)
+                           // , static_cast<uint32_t>(op.p2.y)};
 
-    component_info_ptr->component_data = rectangle_data {op.color[0], op.color[1], op.color[2], op.color[3]};
+    component_info_ptr->component_data.arc_quadractic_data = arc_quadractic_data {op.p0, op.p1, op.p2};
 
     buffer_allocator.unmap (swapchain_info.component_ssbo_buffer);
   }
