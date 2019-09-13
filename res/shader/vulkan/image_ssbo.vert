@@ -20,21 +20,24 @@ vec2 texcoord[6]
    ,  {0.0f,  0.0f}
   };
 
-#include "set2.layout"
-
 float scale (uint v, uint size)
 {
   return float(v)/float(size-1)*2 - 1.0f;
 }  
 
+#include "set2.layout"
+#include "arc_quadractic_ssbo.frag"
+
 void main()
 {
-  uint zindex = indirect_draw.zindex[gl_InstanceIndex];
+  uint component_id = indirect_draw.component_id[gl_InstanceIndex];
 
-  uint x = component_information.array[zindex].ii_x;
-  uint y = component_information.array[zindex].ii_y;
-  uint w = component_information.array[zindex].ii_w;
-  uint h = component_information.array[zindex].ii_h;
+  if (component_information.array[component_id].component_type != 3)
+  {
+  uint x = component_information.array[component_id].ii_x;
+  uint y = component_information.array[component_id].ii_y;
+  uint w = component_information.array[component_id].ii_w;
+  uint h = component_information.array[component_id].ii_h;
   uint x2 = x + w-1;
   uint y2 = x + h-1;
   float scaled_x1 = scale (x, screen_width);
@@ -56,4 +59,15 @@ void main()
   fragTexCoord = texcoord[vid];
   if (gl_VertexIndex == 0)
     InstanceID = gl_InstanceIndex;
+  }
+  else
+  {
+    uint vid = gl_VertexIndex;
+    gl_Position = arc_quadractic_vertex (gl_InstanceIndex, component_id, vid);
+
+    //gl_Position = positions[vid];
+    //fragTexCoord = texcoord[vid];
+    if (gl_VertexIndex == 0)
+      InstanceID = gl_InstanceIndex;
+  }
 }

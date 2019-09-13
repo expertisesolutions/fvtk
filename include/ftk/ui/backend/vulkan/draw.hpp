@@ -28,6 +28,8 @@ void fill_buffer (VkSemaphore wait_semaphore, VkSemaphore signal_semaphore, topl
   using fastdraw::output::vulkan::from_result;
   using fastdraw::output::vulkan::vulkan_error_code;
 
+  typename toplevel_window<Backend>::indirect_draw_info dummy_buffer;
+
   if (toplevel.swapchain_info[image_index].fill_command == VK_NULL_HANDLE)
   {
     assert (toplevel.swapchain_info[image_index].fill_fence == VK_NULL_HANDLE);
@@ -55,19 +57,27 @@ void fill_buffer (VkSemaphore wait_semaphore, VkSemaphore signal_semaphore, topl
 
     // fill everything with 0's first
     vkCmdFillBuffer (command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
-                   , 0 /* offset */, (6 + 4096 + 4096) * sizeof(uint32_t)
-                   * toplevel.indirect_draw_info_array_size
-                   , 0);
+                     , 0 /* offset */, sizeof (dummy_buffer) * toplevel.indirect_draw_info_array_size
+                     , 0);
     for (std::size_t i = 0; i != toplevel.indirect_draw_info_array_size; ++i)
     {
+      auto offset = [&] (auto* p)
+                    {
+                      auto pg = static_cast<char*>(static_cast<void*>(p));
+                      auto sp = static_cast<char*>(static_cast<void*>(&dummy_buffer));
+                      return pg - sp;
+                    };
+      
       // vertex count filling
       vkCmdFillBuffer (command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
-                       , (6 + 4096 + 4096) * sizeof(uint32_t) * i, sizeof (uint32_t), 6);
+                       , (sizeof (dummy_buffer) * i)
+                       + offset(&dummy_buffer.indirect.vertexCount)
+                       , sizeof (dummy_buffer.indirect.instanceCount), 6);
       // fill fg_zindex array
       vkCmdFillBuffer (command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
-                       , (6 + 4096 + 4096) * sizeof(uint32_t) * i
-                       + (6 + 4096) * sizeof(uint32_t)
-                       , sizeof (uint32_t) * 4096, 0xFFFFFFFF);
+                       , (sizeof (dummy_buffer) * i)
+                       + offset (&dummy_buffer.component_ids)
+                       , sizeof (dummy_buffer.component_ids), 0xFFFFFFFF);
     }
   
     r = from_result (vkEndCommandBuffer(command_buffer));
@@ -574,15 +584,15 @@ void debug_ssbo_buffer (toplevel_window<Backend>& toplevel, uint32_t image_index
     {
       std::cout << "finished indirect draw info vertexCount " << iterator->indirect.vertexCount
                 << " instanceCount " << iterator->indirect.instanceCount
-                << " firstVertex " << iterator->indirect.firstVertex
-                << " firstInstance " << iterator->indirect.firstInstance
-                << " component length " << iterator->component_length
+                // << " firstVertex " << iterator->indirect.firstVertex
+                // << " firstInstance " << iterator->indirect.firstInstance
+                // << " component length " << iterator->component_length
                 << " fragment_data_length " << iterator->fragment_data_length
         ;
-      std::cout << " zindexes ";
+      std::cout << " component_ids ";
       for (unsigned int j = 0; j != iterator->fragment_data_length; ++j)
       {
-        std::cout << " " << j;
+        std::cout << " " << iterator->component_ids[j];
       }
       std::cout << std::endl;
     }

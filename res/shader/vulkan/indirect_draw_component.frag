@@ -21,7 +21,7 @@ in vec4 gl_FragCoord;
 #include "arc_quadractic_ssbo.frag"
 
 void main() {
-  uint component_index = indirect_draw.zindex[InstanceID];
+  uint component_index = indirect_draw.component_id[InstanceID];
   if (component_information.array[component_index].component_type == image_component_type)
   {
     image_draw_fragment (component_index);

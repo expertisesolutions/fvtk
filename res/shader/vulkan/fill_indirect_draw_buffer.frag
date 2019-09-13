@@ -11,6 +11,7 @@ const int screen_height = 1000;
 
 #include "set01.layout"
 #include "set2.layout"
+const uint arc_quadractic_component_type = 3;
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -40,27 +41,33 @@ void main()
         // found correct image
         if (atomicExchange(indirect_draw.buffers_to_draw[value], 1) == 0)
         {
-          atomicAdd (indirect_draw.instance_count, 1);
+          uint segments =
+            (component_information.array[value].component_type == arc_quadractic_component_type
+             ? 10 : 1);
+          atomicAdd (indirect_draw.instance_count, segments);
 
           uint old_value = 0xFFFFFFFF;
           uint cur_index = 0;
-          while (true)
+          uint counter = 0;
+          while (counter != segments)
           {
             uint length = atomicAdd(indirect_draw.fragment_data_length, 0);
             while (cur_index != length)
             {
-              old_value = atomicMin (indirect_draw.zindex[cur_index], value);
+              old_value = atomicMin (indirect_draw.component_id[cur_index], value);
               ++cur_index;
               if (value < old_value)
                 value = old_value;
             }
 
             // theoretically after sequence
-            if (atomicCompSwap (indirect_draw.zindex[cur_index], 0xFFFFFFFF, value) == 0xFFFFFFFF)
+            if (atomicCompSwap (indirect_draw.component_id[cur_index], 0xFFFFFFFF, value) == 0xFFFFFFFF)
             {
               atomicAdd (indirect_draw.fragment_data_length, 1);
-              indirect_draw.zindex[cur_index] = value;
-              break;
+              indirect_draw.component_id[cur_index] = value;
+              //indirect_draw.instance_id_start[cur_index] = cur_index - counter;
+              ++counter;
+              continue;
             }
           }
 

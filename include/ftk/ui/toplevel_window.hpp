@@ -440,7 +440,7 @@ struct toplevel_window
     uint32_t component_length;
     uint32_t fragment_data_length;
     uint32_t buffers_to_draw[4096];
-    uint fg_zindex[4096];
+    uint component_ids[4096];
   };
 
   struct component_operation

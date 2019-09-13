@@ -32,6 +32,6 @@ layout (std430, set = 2, binding = 2) READONLY buffer indirect_draw_info
   uint image_length;
   uint fragment_data_length;
   uint buffers_to_draw [tex_max_size];
-  uint zindex[tex_max_size];
+  uint component_id[tex_max_size];
 } indirect_draw;
 
