@@ -184,7 +184,7 @@ local shader_sources =
   res/shader/vulkan/fill_indirect_draw_buffer.frag
   res/shader/vulkan/fill_indirect_draw_buffer.vert
   res/shader/vulkan/indirect_draw_component.frag
-  res/shader/vulkan/image_ssbo.vert
+  res/shader/vulkan/indirect_draw_component.vert
  ;
 local shader_targets = ;
 

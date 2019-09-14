@@ -9,7 +9,9 @@ struct rectangle_info
   uint found_alpha;
   uint component_type;
   uint padding0;
-  vec4 fill_color;  
+  vec4 fill_color;
+  uint padding1[2];
+  uint padding2[2];
 };
 
 layout (std430, set = 2, binding = 0) buffer rectangle_infos

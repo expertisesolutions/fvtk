@@ -137,12 +137,18 @@ struct arc_quadractic_component
 {
   P p0,p1,p2;
 };
+template <typename P = fastdraw::point<std::int32_t>>
+struct arc_cubic_component
+{
+  P p0,p1,p2,p3;
+};
 
 template <std::size_t swapchain_image_count>
 struct toplevel_window_component
 {
   std::int32_t x, y, width, height;
-  std::variant<image_component, button_component, rectangle_component, arc_quadractic_component<>> component_data;
+  std::variant<image_component, button_component, rectangle_component, arc_quadractic_component<>
+               , arc_cubic_component<>> component_data;
 
   bool must_draw[swapchain_image_count] = {true, true};
 
@@ -295,6 +301,21 @@ struct toplevel_window
 
     return it;
   }
+  component_iterator append_arc_cubic (fastdraw::point<std::int32_t> p0, fastdraw::point<std::int32_t> p1, fastdraw::point<std::int32_t> p2
+                                       , fastdraw::point<std::int32_t> p3)
+  {
+    window_component component
+      = {p0.x, p0.y, p3.x, p3.y, arc_cubic_component<>{p0,p1,p2,p3}};
+
+    std::cout << "appending arc quadractic in " << component.x << "x" << component.y << std::endl;
+    auto it = components.insert(components.begin(), component);
+
+    typename component_operation::append_arc_cubic_operation op
+      {p0,p1,p2, p3, /*reverse index */ std::distance(it, components.end())-1};
+    queue_operation(op);
+
+    return it;
+  }
   void replace_image_view (component_iterator component, VkImageView view)
   {
     // image_component* p = std::get_if<image_component>(&component->component_data);
@@ -385,7 +406,7 @@ struct toplevel_window
   
   enum class component_type
   {
-    image, button, rectangle, arc_quadractic
+    image, button, rectangle, arc_quadractic, arc_cubic
   };
 
   struct image_data {};
@@ -397,6 +418,10 @@ struct toplevel_window
   struct arc_quadractic_data
   {
     fastdraw::point<int32_t> p0, p1, p2;
+  };
+  struct arc_cubic_data
+  {
+    fastdraw::point<int32_t> p0, p1, p2, p3;
   };
 
   template <typename...C>
@@ -417,6 +442,7 @@ struct toplevel_window
     union {
       struct rectangle_data rectangle_data;
       struct arc_quadractic_data arc_quadractic_data;
+      struct arc_cubic_data arc_cubic_data;
     } component_data;
     //static_assert (sizeof (std::variant <image_data, button_data, rectangle_data>) == sizeof (float)*4 + sizeof(uint32_t), "");
 
@@ -427,12 +453,14 @@ struct toplevel_window
       //uint alpha_compositing;
       uint found_alpha;
       uint component_type;
-      uint padding0;
-      uint padding[4];
-      uint padding1[2];
+      uint padding0; // padding
+      uint padding[4]; // p0, p1
+      uint padding1[2]; // p2
+      uint padding2[2]; // p3
     };
   };
   static_assert (sizeof (component_info) == sizeof (typename component_info::dummy), "");
+  static_assert (sizeof (component_info) % 16 == 0, "");
 
   struct indirect_draw_info
   {
@@ -463,6 +491,11 @@ struct toplevel_window
       fastdraw::point<std::int32_t> p0, p1, p2;
       std::uint32_t component_index;
     };
+    struct append_arc_cubic_operation
+    {
+      fastdraw::point<std::int32_t> p0, p1, p2, p3;
+      std::uint32_t component_index;
+    };
     struct replace_image_view_operation
     {
       component_iterator component;
@@ -480,6 +513,7 @@ struct toplevel_window
     
     std::variant<append_image_operation, append_rectangle_operation
                  , append_arc_quadractic_operation
+                 , append_arc_cubic_operation
                  //, replace_image_view_operation
                  //, remove_component_operation
                  , move_component_operation> operation;
@@ -534,8 +568,8 @@ struct toplevel_window
     *component_info_ptr = {0ul
                            , static_cast<uint32_t>(op.p0.x)
                            , static_cast<uint32_t>(op.p0.y)
-                           , static_cast<uint32_t>(op.p1.x)
-                           , static_cast<uint32_t>(op.p1.y), 1/*, 0*/, static_cast<int>(component_type::arc_quadractic)};
+                           , static_cast<uint32_t>(op.p2.x)
+                           , static_cast<uint32_t>(op.p2.y), 1/*, 0*/, static_cast<int>(component_type::arc_quadractic)};
                            // , static_cast<uint32_t>(op.p2.x)
                            // , static_cast<uint32_t>(op.p2.y)};
 
@@ -544,6 +578,26 @@ struct toplevel_window
     buffer_allocator.unmap (swapchain_info.component_ssbo_buffer);
   }
 
+  void transfer_operation (typename component_operation::append_arc_cubic_operation op, swapchain_specific_information& swapchain_info
+                           , unsigned int swapchain_index)
+  {
+    auto ssbo_data = buffer_allocator.map (swapchain_info.component_ssbo_buffer);
+
+    std::cout << "rectangle component_index " << op.component_index << std::endl;
+    auto component_info_ptr = static_cast<component_info*>(ssbo_data) + op.component_index;
+    *component_info_ptr = {0ul
+                           , static_cast<uint32_t>(op.p0.x)
+                           , static_cast<uint32_t>(op.p0.y)
+                           , static_cast<uint32_t>(op.p3.x)
+                           , static_cast<uint32_t>(op.p3.y), 1/*, 0*/, static_cast<int>(component_type::arc_cubic)};
+                           // , static_cast<uint32_t>(op.p2.x)
+                           // , static_cast<uint32_t>(op.p2.y)};
+
+    component_info_ptr->component_data.arc_cubic_data = arc_cubic_data {op.p0, op.p1, op.p2, op.p3};
+
+    buffer_allocator.unmap (swapchain_info.component_ssbo_buffer);
+  }
+  
   void transfer_operation (typename component_operation::move_component_operation op, swapchain_specific_information& swapchain_info
                            , unsigned int swapchain_index)
   {

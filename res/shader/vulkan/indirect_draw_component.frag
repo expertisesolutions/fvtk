@@ -18,28 +18,27 @@ in vec4 gl_FragCoord;
 #include "image_ssbo.frag"
 #include "button_ssbo.frag"
 #include "rectangle_ssbo.frag"
-#include "arc_quadractic_ssbo.frag"
+#include "arc_ssbo.frag"
 
 void main() {
   uint component_index = indirect_draw.component_id[InstanceID];
-  if (component_information.array[component_index].component_type == image_component_type)
+  switch (component_information.array[component_index].component_type)
   {
+  case image_component_type:
     image_draw_fragment (component_index);
-    //outColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);
-  }
-  else if (component_information.array[component_index].component_type == button_component_type)
-  {
+    break;
+  case button_component_type:
     button_draw_fragment (component_index);
-    //outColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
-  }
-  else if (component_information.array[component_index].component_type == rectangle_component_type)
-  {
+    break;
+  case rectangle_component_type:
     rectangle_draw_fragment (component_index);
-    //outColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
-  }
-  else if (component_information.array[component_index].component_type == 3)
-  {
+    break;
+  case arc_quadractic_component_type:
     arc_quadractic_draw_fragment (component_index);
-  }
+    break;
+  case arc_cubic_component_type:
+    arc_cubic_draw_fragment (component_index);
+    break;
+  };
 }
 

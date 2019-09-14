@@ -55,8 +55,9 @@ int main(int argc, char* argv[])
 
   std::cout << "w width " << w.window.voutput.swapChainExtent.width << std::endl;
   
-  w.append_arc_quadractic
-    ({10, 10}, {200, 200}, {300, 700});
+  //w.append_arc_quadractic ({10, 10}, {200, 200}, {500, 500});
+  w.append_arc_quadractic ({10, 10}, {200, 200}, {500, 1000});
+  //w.append_arc_cubic ({600, 100}, {1200, 900}, {600, 900}, {1200, 100});
   ftk::ui::backend::vulkan::draw_and_present (w, true);
   
   ftk::ui::backend::uv::timer_wait

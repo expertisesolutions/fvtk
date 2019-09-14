@@ -555,7 +555,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
     CHRONO_COMPARE()
-    vertShaderStageInfo.module = output.shader_loader->load(shader::image_vertex);
+    vertShaderStageInfo.module = output.shader_loader->load(shader::indirect_draw_component_vertex);
     CHRONO_COMPARE()
     vertShaderStageInfo.pName = "main";
     
@@ -1141,7 +1141,7 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
     VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertShaderStageInfo.module = output.shader_loader->load(shader::image_vertex);
+    vertShaderStageInfo.module = output.shader_loader->load(shader::indirect_draw_component_vertex);
     vertShaderStageInfo.pName = "main";
     
     VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};

@@ -10,6 +10,8 @@ struct image_info
   uint component_type;
   uint padding0;
   uint padding[4];
+  uint padding1[2];
+  uint padding2[2];
 };
 
 layout (std430, set = 2, binding = 0) buffer image_infos

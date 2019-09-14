@@ -12,6 +12,7 @@ const int screen_height = 1000;
 #include "set01.layout"
 #include "set2.layout"
 const uint arc_quadractic_component_type = 3;
+const uint arc_cubic_component_type = 4;
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -42,8 +43,9 @@ void main()
         if (atomicExchange(indirect_draw.buffers_to_draw[value], 1) == 0)
         {
           uint segments =
-            (component_information.array[value].component_type == arc_quadractic_component_type
-             ? 10 : 1);
+            ((component_information.array[value].component_type == arc_quadractic_component_type
+              || component_information.array[value].component_type == arc_cubic_component_type)
+             ? 20 : 1);
           atomicAdd (indirect_draw.instance_count, segments);
 
           uint old_value = 0xFFFFFFFF;
