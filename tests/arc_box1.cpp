@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 Felipe Magno de Almeida.
 // Distributed under the Boost Software License, Version 1.0. (See
@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
   
   ftk::ui::backend::uv::timer_wait
     (backend.loop
-     , 1000
+     , 5000
      , [&] (uv_timer_t* timer)
        {
          uv_stop (&loop);

@@ -26,12 +26,7 @@ layout (std430, set = 2, binding = 0) buffer arc_quadractic_infos
 } arc_quadractic_information;
 
 #ifdef VERTEX_SHADER
-layout (location = 3) out flat float arc_quadractic_t1;
-layout (location = 4) out flat float arc_quadractic_t2;
-#else
-layout (location = 3) in flat float arc_quadractic_t1;
-layout (location = 4) in flat float arc_quadractic_t2;
-#endif
+layout (location = 3) out float arc_quadractic_t;
 
 vec4 arc_quadractic_vertex (uint instance_id, uint component_id, uint vid)
 {
@@ -42,33 +37,34 @@ vec4 arc_quadractic_vertex (uint instance_id, uint component_id, uint vid)
     float t1 = float(segment_id)/10.f;
     float t2 = float(segment_id+1)/10.0f;
 
+    float border = 4;
+    
     vec2 p0 = arc_quadractic_information.array[component_id].p0;
     vec2 p1 = arc_quadractic_information.array[component_id].p1;
     vec2 p2 = arc_quadractic_information.array[component_id].p2;
 
     float px1 = (1-t1) * (1-t1) * float(p0.x)
       + 2 * (1 - t1) * t1*float(p1.x)
-      + t1 * t1 * float(p2.x);
+      + t1 * t1 * float(p2.x) /*+ border*/;
     float py1 = (1-t1) * (1-t1) * float(p0.y)
       + 2 * (1 - t1) * t1*float(p1.y)
-      + t1 * t1 * float(p2.y);
+      + t1 * t1 * float(p2.y) /*+ border*/;
 
     float px2 = (1-t2) * (1-t2) * float(p0.x)
       + 2 * (1 - t2) * t2*float(p1.x)
-      + t2 * t2 * float(p2.x);
+      + t2 * t2 * float(p2.x) /*- border*/;
     float py2 = (1-t2) * (1-t2) * float(p0.y)
       + 2 * (1 - t2) * t2*float(p1.y)
-      + t2 * t2 * float(p2.y);
+      + t2 * t2 * float(p2.y) /*- border*/;
 
-    arc_quadractic_t1 = t1;
-    arc_quadractic_t2 = t2;
+    float position_ratio [6] =
+      {
+         0.0f, 0.5f, 1.0f
+       , 1.0f, 0.5f, 0.0f
+      };
+    
+    arc_quadractic_t = position_ratio [vid] * (t2 - t1) + t1;
 
-    // uint x = component_information.array[component_id].ii_x;
-    // uint y = component_information.array[component_id].ii_y;
-    // uint w = component_information.array[component_id].ii_w;
-    // uint h = component_information.array[component_id].ii_h;
-    // uint x2 = x + w-1;
-    // uint y2 = x + h-1;
     float scaled_x1 = scale (uint(px1), screen_width);
     float scaled_y1 = scale (uint(py1), screen_height);
     float scaled_x2 = scale (uint(px2), screen_width);
@@ -86,10 +82,31 @@ vec4 arc_quadractic_vertex (uint instance_id, uint component_id, uint vid)
 
     return positions[vid];
 }
-#ifndef VERTEX_SHADER
-void arc_quadractic_draw_fragment(uint zindex) {
-  //outColor = arc_quadractic_information.array[zindex].fill_color;
-  //outColor = 
-  outColor = vec4 (1.0f, 0.0f, 0.0f, 1.0f);
+#else
+layout (location = 3) in float arc_quadractic_t;
+
+void arc_quadractic_draw_fragment(uint component_id) {
+
+    vec2 p0 = arc_quadractic_information.array[component_id].p0;
+    vec2 p1 = arc_quadractic_information.array[component_id].p1;
+    vec2 p2 = arc_quadractic_information.array[component_id].p2;
+
+  float t = arc_quadractic_t;
+  vec2 pos =
+    vec2
+    (
+     (1-t) * (1-t) * float(p0.x)
+     + 2 * (1 - t) * t*float(p1.x)
+     + t * t * float(p2.x)
+     , (1-t) * (1-t) * float(p0.y)
+     + 2 * (1 - t) * t*float(p1.y)
+     + t * t * float(p2.y)
+    );
+
+  float dist = distance (pos, gl_FragCoord.xy);
+  float border = 4;
+  float color = dist > border ? 0.0 : (1 - dist/border);
+
+  outColor = vec4 (color, 0.0f, 0.0f, 1.0f);
 }
 #endif
