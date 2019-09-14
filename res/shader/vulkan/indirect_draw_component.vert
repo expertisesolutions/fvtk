@@ -64,18 +64,10 @@ void main()
     }
     break;
   case arc_quadractic_component_type:
-    {
-      uint vid = gl_VertexIndex;
-      gl_Position = arc_quadractic_vertex (gl_InstanceIndex, component_id, vid);
-
-      if (gl_VertexIndex == 0)
-        InstanceID = gl_InstanceIndex;
-    }
-    break;
   case arc_cubic_component_type:
     {
       uint vid = gl_VertexIndex;
-      gl_Position = arc_cubic_vertex (gl_InstanceIndex, component_id, vid);
+      gl_Position = arc_vertex (gl_InstanceIndex, component_id, vid);
 
       if (gl_VertexIndex == 0)
         InstanceID = gl_InstanceIndex;

@@ -54,6 +54,12 @@ float cubic_bezier_coordinate (float x, float y, float z, float w, float t)
   return p;
 }
 
+float generic_bezier_coordinate (bool cubic, float x, float y, float z, float w, float t)
+{
+  return cubic ? cubic_bezier_coordinate (x, y, z, w, t)
+    : quadractic_bezier_coordinate (x, y, z, t);
+}
+
 #ifdef VERTEX_SHADER
 layout (location = 3) out float arc_t;
 
@@ -65,8 +71,9 @@ uint get_instance_id_first (uint instance_id, uint component_id)
   return instance_id_first;
 }
 
-vec4 arc_quadractic_vertex (uint instance_id, uint component_id, uint vid)
+vec4 arc_vertex (uint instance_id, uint component_id, uint vid)
 {
+  bool is_cubic = component_id == arc_cubic_component_type;
   uint instance_id_first = get_instance_id_first (instance_id, component_id);
   uint segment_id = instance_id - instance_id_first;
 
@@ -76,19 +83,33 @@ vec4 arc_quadractic_vertex (uint instance_id, uint component_id, uint vid)
   vec2 p0 = arc_information.array[component_id].p0;
   vec2 p1 = arc_information.array[component_id].p1;
   vec2 p2 = arc_information.array[component_id].p2;
+  vec2 p3 = arc_information.array[component_id].p3;
 
   vec2 src = vec2
     (
-       quadractic_bezier_coordinate (p0.x, p1.x, p2.x, t1)
-     , quadractic_bezier_coordinate (p0.y, p1.y, p2.y, t1)
+       generic_bezier_coordinate (is_cubic, p0.x, p1.x, p2.x, p3.x, t1)
+     , generic_bezier_coordinate (is_cubic, p0.y, p1.y, p2.y, p3.y, t1)
     );
-  vec2 scaled_src = vec2 (scale (uint(src.x), screen_width), scale (uint(src.y), screen_height));
-
   vec2 dst = vec2
     (
-      quadractic_bezier_coordinate (p0.x, p1.x, p2.x, t2)
-    , quadractic_bezier_coordinate (p0.y, p1.y, p2.y, t2)
+       generic_bezier_coordinate (is_cubic, p0.x, p1.x, p2.x, p3.x, t2)
+     , generic_bezier_coordinate (is_cubic, p0.y, p1.y, p2.y, p3.y, t2)
     );
+
+  {
+    if (abs(src.x - dst.x) <= 4)
+    {
+      if (src.x < dst.x) dst.x += 4;
+      else src.x += 4;
+    }
+    else if (abs(src.y - dst.y) <= 4)
+    {
+      if (src.y < dst.y) dst.y += 4;
+      else src.y += 4;
+    }
+  }
+
+  vec2 scaled_src = vec2 (scale (uint(src.x), screen_width), scale (uint(src.y), screen_height));
   vec2 scaled_dst = vec2 (scale (uint(dst.x), screen_width), scale (uint(dst.y), screen_height));
 
   // draw left connection
@@ -98,8 +119,8 @@ vec4 arc_quadractic_vertex (uint instance_id, uint component_id, uint vid)
 
     vec2 src0 = vec2
       (
-       quadractic_bezier_coordinate (p0.x, p1.x, p2.x, t0)
-       , quadractic_bezier_coordinate (p0.y, p1.y, p2.y, t0)
+         generic_bezier_coordinate (is_cubic, p0.x, p1.x, p2.x, p3.x, t0)
+       , generic_bezier_coordinate (is_cubic, p0.y, p1.y, p2.y, p3.y, t0)
       );
     vec2 scaled_src0 = vec2 (scale (uint(src0.x), screen_width), scale (uint(src0.y), screen_height));
     
@@ -154,55 +175,6 @@ vec4 arc_quadractic_vertex (uint instance_id, uint component_id, uint vid)
     return vec4(positions[vid], 0.0f, 1.0f);
   }
 }
-
-vec4 arc_cubic_vertex (uint instance_id, uint component_id, uint vid)
-{
-  uint instance_id_first = get_instance_id_first (instance_id, component_id);
-  uint segment_id = instance_id - instance_id_first;
-
-  float t1 = float(segment_id)  /10.f;
-  float t2 = float(segment_id+1)/10.0f;
-
-  vec2 p0 = arc_information.array[component_id].p0;
-  vec2 p1 = arc_information.array[component_id].p1;
-  vec2 p2 = arc_information.array[component_id].p2;
-  vec2 p3 = arc_information.array[component_id].p3;
-
-  vec2 src = vec2
-    (
-       cubic_bezier_coordinate (p0.x, p1.x, p2.x, p3.x, t1)
-     , cubic_bezier_coordinate (p0.y, p1.y, p2.y, p3.y, t1)
-    );
-
-  vec2 dst = vec2
-    (
-       cubic_bezier_coordinate (p0.x, p1.x, p2.x, p3.x, t2)
-     , cubic_bezier_coordinate (p0.y, p1.y, p2.y, p3.y, t2)
-    );
-
-  float position_ratio [6] =
-    {
-       0.0f, 0.5f, 1.0f
-     , 1.0f, 0.5f, 0.0f
-    };
-    
-  arc_t = position_ratio [vid] * (t2 - t1) + t1;
-
-  vec2 scaled_src = vec2 (scale (uint(src.x), screen_width), scale (uint(src.y), screen_height));
-  vec2 scaled_dst = vec2 (scale (uint(dst.x), screen_width), scale (uint(dst.y), screen_height));
-  
-  vec2 positions[6] =
-    {
-       {scaled_src.x, scaled_src.y}
-     , {scaled_dst.x, scaled_src.y}
-     , {scaled_dst.x, scaled_dst.y}
-     , {scaled_dst.x, scaled_dst.y}
-     , {scaled_src.x, scaled_dst.y}
-     , {scaled_src.x, scaled_src.y}
-    };
-
-  return vec4(positions[vid], 0.0f, 1.0f);
-}
 #else
 layout (location = 3) in float arc_t;
 
@@ -248,6 +220,6 @@ void arc_cubic_draw_fragment(uint component_id)
   float color = dist > border ? 0.0 : (1 - dist/border);
 
   //outColor = vec4 (color, 0.0f, 0.0f, 1.0f);
-  outColor = vec4(p3.y == 100 ? 1.0f : 0.0f, 0.0f, 0.5f, 1.0f);
+  outColor = vec4(arc_t, 0.0f, 0.5f, 1.0f);
 }
 #endif
