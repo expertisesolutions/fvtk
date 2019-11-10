@@ -34,10 +34,8 @@ void main() {
     rectangle_draw_fragment (component_index);
     break;
   case arc_quadractic_component_type:
-    arc_quadractic_draw_fragment (component_index);
-    break;
   case arc_cubic_component_type:
-    arc_cubic_draw_fragment (component_index);
+    arc_draw_fragment (component_index);
     break;
   };
 }

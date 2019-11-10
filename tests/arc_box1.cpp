@@ -55,14 +55,19 @@ int main(int argc, char* argv[])
 
   std::cout << "w width " << w.window.voutput.swapChainExtent.width << std::endl;
   
-  //w.append_arc_quadractic ({10, 10}, {200, 200}, {500, 500});
-  w.append_arc_quadractic ({10, 10}, {200, 200}, {500, 1000});
-  w.append_arc_cubic ({600, 100}, {1200, 900}, {600, 900}, {1200, 100});
+  // w.append_arc_quadractic ({10, 10}, {200, 200}, {500, 500});
+  // w.append_arc_quadractic ({10, 10}, {200, 200}, {500, 1000});
+  // w.append_arc_quadractic ({2*(200 - 10), 2*(200-10)}, {2*(500-200), 2*(1000-200)}, {500, 1000});
+  // w.append_arc_cubic ({0, 100}, {600, 300}, {700, 600}, {1200, 1500});
+  w.append_arc_cubic ({0, 0}, {1280, 0}, {0, 1000}, {1280, 1000});
+  // w.append_arc_quadractic ({600, 200}, {100, 300}, {500, 900}); // tangent
+  // w.append_arc_quadractic ({-200+1280, 600}, {-300+1280, 100}, {-900+1280, 500}); // normal?
+  // w.append_arc_cubic ({10, 10}, {300, 300}, {600, 600}, {1000, 1000});
   ftk::ui::backend::vulkan::draw_and_present (w, true);
   
   ftk::ui::backend::uv::timer_wait
     (backend.loop
-     , 5000
+     , 205000
      , [&] (uv_timer_t* timer)
        {
          uv_stop (&loop);

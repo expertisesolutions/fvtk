@@ -47,7 +47,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
                                                   , VK_FALSE                                                 // depthClampEnable
                                                   , VK_FALSE                                                 // rasterizerDiscardEnable
                                                   , VK_POLYGON_MODE_FILL                                     // polygonMode
-                                                  , VK_CULL_MODE_BACK_BIT                                    // cullMode
+                                                  , VK_CULL_MODE_NONE                                    // cullMode
                                                   , VK_FRONT_FACE_CLOCKWISE                                  // frontFace
                                                   , VK_FALSE                                                 // depthBiasEnable
                                                   , 0.0f                                                     // depthBiasConstantFactor
@@ -734,7 +734,7 @@ vulkan_draw_info create_image_pipeline (vulkan_output_info<WindowingBase>& outpu
                                      , VK_FALSE                                                 // depthClampEnable
                                      , VK_FALSE                                                 // rasterizerDiscardEnable
                                      , VK_POLYGON_MODE_FILL                                     // polygonMode
-                                     , VK_CULL_MODE_BACK_BIT                                    // cullMode
+                                     , VK_CULL_MODE_NONE                                    // cullMode
                                      , VK_FRONT_FACE_CLOCKWISE                                  // frontFace
                                      , VK_FALSE                                                 // depthBiasEnable
                                      , 0.0f                                                     // depthBiasConstantFactor
