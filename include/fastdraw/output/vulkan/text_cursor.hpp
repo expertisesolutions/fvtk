@@ -16,6 +16,7 @@
 #include <vector>
 #include <stdexcept>
 
+#error
 namespace fastdraw { namespace output { namespace vulkan {
 
 template <typename Coord, typename WindowingBase, typename Color>

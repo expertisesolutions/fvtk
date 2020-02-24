@@ -24,6 +24,8 @@ rule init-deps ( )
    libpng
    libjpeg
    libdrm
+   fontconfig
+   x11
    ;
 
   if ! $(using-conan)
@@ -131,7 +133,23 @@ rule init-deps ( )
       ECHO not found libdrm library. Install with apt-get install libdrm-devel or something like this. ;
     }
   }
-  
+
+  rule configure-fontconfig ( properties * )
+  {
+    if ! [ configure.builds /fontconfig//has_fontconfig : $(properties) : "fontconfig" ]
+    {
+      ECHO not found fontconfig library. Install with apt-get install fontconfig-devel or something like this. ;
+    }
+  }
+
+  rule configure-x11 ( properties * )
+  {
+    if ! [ configure.builds /x11//has_x11 : $(properties) : "x11" ]
+    {
+      ECHO not found X11 library. Install with apt-get install x11-devel or something like this. ;
+    }
+  }
+
   for local lib in $(pkg-config-libraries)
   {
     local project = [ project.find $(lib) : $(current-pwd) ] ;
@@ -139,16 +157,6 @@ rule init-deps ( )
     {
       alias build_options_$(lib) : : : : <conditional>@configure-$(lib) ;
     }
-  }
-  
-  if ! $(empty)
-  {
-    local x11 = [ project.find x11 : $(current-pwd) ] ;
-    if ! $(x11)
-    {
-      project x11 ;
-      lib x11 : : <name>X11 ;
-    }  
   }
   
   if ! $(using-conan)
@@ -217,6 +225,6 @@ alias testsuite :
  [ run tests/move_image_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 /libpng//libpng /libjpeg//libjpeg : $(res-path) $(test-res-path) : : <dependency>compiled-res ]
  [ run tests/rectangle_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 : $(res-path) : : <dependency>compiled-res ]
  [ run tests/arc_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 /libpng//libpng /libjpeg//libjpeg : $(res-path) $(test-res-path) : : <dependency>compiled-res ]
- [ run tests/font_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 /libpng//libpng /libjpeg//libjpeg : $(res-path) $(test-res-path) : : <dependency>compiled-res ]
+ [ run tests/font_box1.cpp ftk /fontconfig//fontconfig /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 /libpng//libpng /libjpeg//libjpeg : $(res-path) $(test-res-path) : : <dependency>compiled-res ]
  ;
 

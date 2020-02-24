@@ -17,7 +17,7 @@
 
 #include <fastdraw/output/vulkan/vulkan_draw.hpp>
 #include <fastdraw/object/dmabuf_image.hpp>
-#include <fastdraw/output/vulkan/add_dmabuf_image.hpp>
+//#include <fastdraw/output/vulkan/add_dmabuf_image.hpp>
 
 namespace ftk { namespace ui { namespace backend { namespace vulkan {
 
@@ -482,10 +482,11 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
     throw std::system_error(make_error_code(r));
 
   auto queue_begin = std::chrono::high_resolution_clock::now();
+  auto now = std::chrono::high_resolution_clock::now();
   {
     queues::lock_graphic_queue lock_queue(toplevel.window.queues);
 
-    auto now = std::chrono::high_resolution_clock::now();
+    now = std::chrono::high_resolution_clock::now();
     auto diff = now - queue_begin;
     std::cout << "Time locking queue "
               << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
@@ -508,6 +509,12 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
     if (r != vulkan_error_code::success)
       throw std::system_error (make_error_code (r));
   }
+
+  auto now3 = std::chrono::high_resolution_clock::now();
+  auto diff3 = now3 - now;
+  std::cout << "Time waiting fence "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(diff3).count()
+            << "ms" << std::endl;
 
 }
 
@@ -613,3 +620,4 @@ void debug_ssbo_buffer (toplevel_window<Backend>& toplevel, uint32_t image_index
 } } } }
 
 #endif
+

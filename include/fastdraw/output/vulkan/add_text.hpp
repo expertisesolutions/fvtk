@@ -27,6 +27,7 @@
 #include <ft2build.h>
 #include FT_TRUETYPE_TABLES_H /* Freetype2 OS/2 font table. */
 
+#error
 namespace fastdraw { namespace output { namespace vulkan {
 
 template <typename Point, typename String, typename Color, typename WindowingBase>

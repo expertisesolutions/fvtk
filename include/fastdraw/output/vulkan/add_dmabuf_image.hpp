@@ -29,10 +29,11 @@
 
 #include <png.h>
 
-#define USE_vkCreateDmaBufImageINTEL
-#include <vulkan/vulkan_intel.h>
-#undef USE_vkCreateDmaBufImageINTEL
+// #define USE_vkCreateDmaBufImageINTEL
+// #include <vulkan/vulkan_intel.h>
+// #undef USE_vkCreateDmaBufImageINTEL
 
+#error
 namespace fastdraw { namespace output { namespace vulkan {
 
 template <typename Point, typename WindowingBase>
@@ -44,7 +45,7 @@ vulkan_draw_info create_output_specific_object (vulkan_output_info<WindowingBase
                                                   , VK_FALSE                                                 // depthClampEnable
                                                   , VK_FALSE                                                 // rasterizerDiscardEnable
                                                   , VK_POLYGON_MODE_FILL                                     // polygonMode
-                                                  , VK_CULL_MODE_BACK_BIT                                    // cullMode
+                                                  , VK_CULL_MODE_NONE                                    // cullMode
                                                   , VK_FRONT_FACE_CLOCKWISE                                  // frontFace
                                                   , VK_FALSE                                                 // depthBiasEnable
                                                   , 0.0f                                                     // depthBiasConstantFactor

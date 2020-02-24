@@ -84,7 +84,7 @@ pc::future<vulkan_image> load_text (FT_Library freetype, FT_Face face
 
   unsigned int total_size = 0;
 
-  for (int i = 0; i != glyph_info_count; ++i) 
+  for (unsigned int i = 0; i != glyph_info_count; ++i) 
   {
     FT_UInt glyph_index = glyph_info[i].codepoint;
     FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT);
@@ -130,6 +130,7 @@ pc::future<vulkan_image> load_text (FT_Library freetype, FT_Face face
   
   
   std::cout << "total size " << total_size << std::endl;
+  return {};
 }
 
 } } } }

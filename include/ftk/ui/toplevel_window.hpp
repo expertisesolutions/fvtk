@@ -17,7 +17,10 @@
 #include <ftk/ui/backend/vulkan/queues.hpp>
 #include <ftk/ui/backend/vulkan/load.hpp>
 
-#include <fastdraw/output/vulkan/vulkan_draw_info.hpp>
+//#include <fastdraw/output/vulkan/add_image.hpp>
+//#include <fastdraw/output/vulkan/vulkan_draw_info.hpp>
+#include <fastdraw/coordinates.hpp>
+#include <fastdraw/color.hpp>
 #include <fastdraw/output/vulkan/add_image.hpp>
 
 #include <functional>
@@ -296,7 +299,7 @@ struct toplevel_window
     auto it = components.insert(components.begin(), component);
 
     typename component_operation::append_arc_quadractic_operation op
-      {p0,p1,p2, /*reverse index */ std::distance(it, components.end())-1};
+      {p0,p1,p2, /*reverse index */ static_cast<std::uint32_t>(std::distance(it, components.end())-1)};
     queue_operation(op);
 
     return it;
@@ -307,11 +310,11 @@ struct toplevel_window
     window_component component
       = {p0.x, p0.y, p3.x, p3.y, arc_cubic_component<>{p0,p1,p2,p3}};
 
-    std::cout << "appending arc quadractic in " << component.x << "x" << component.y << std::endl;
+    std::cout << "appending arc cubic in " << component.x << "x" << component.y << std::endl;
     auto it = components.insert(components.begin(), component);
 
     typename component_operation::append_arc_cubic_operation op
-      {p0,p1,p2, p3, /*reverse index */ std::distance(it, components.end())-1};
+      {p0,p1,p2, p3, /*reverse index */ static_cast<std::uint32_t>(std::distance(it, components.end())-1)};
     queue_operation(op);
 
     return it;

@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <cstring>
 
+#error
 namespace fastdraw { namespace output { namespace vulkan {
 
 template <typename Point, typename Color, typename WindowingBase>

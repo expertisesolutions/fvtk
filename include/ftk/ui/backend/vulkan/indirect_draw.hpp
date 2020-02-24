@@ -179,7 +179,7 @@ create_indirect_draw_buffer_filler_pipeline
        , VK_FALSE                                                 // rasterizerDiscardEnable
        , VK_POLYGON_MODE_FILL                                     // polygonMode
        , VK_CULL_MODE_NONE/*VK_CULL_MODE_BACK_BIT*/                                    // cullMode
-       , VK_FRONT_FACE_CLOCKWISE                                  // frontFace
+       , VK_FRONT_FACE_COUNTER_CLOCKWISE                                  // frontFace
        , VK_FALSE                                                 // depthBiasEnable
        , 0.0f                                                     // depthBiasConstantFactor
        , 0.0f                                                     // depthBiasClamp

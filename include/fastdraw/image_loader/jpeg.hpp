@@ -18,6 +18,8 @@ extern "C" {
 #include <jerror.h>
 }
 
+#include <csetjmp>
+
 namespace fastdraw { namespace image_loader {
 
 struct jpeg

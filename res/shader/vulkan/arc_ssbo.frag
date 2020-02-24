@@ -4,8 +4,8 @@ const uint arc_cubic_component_type = 4;
 const int line_thickness = 1;
 const uint num_segments = 20;
 #ifndef VERTEX_SHADER
-const int screen_width = 1280;
-const int screen_height = 1000;
+const int screen_width = 2000;
+const int screen_height = 1500;
 #endif
 float coord_scale (uint v, uint size)
 {
@@ -142,7 +142,7 @@ vec4 arc_vertex (uint instance_id, uint component_id, uint vid)
   vec2 scaled_src = vec2 (coord_scale (uint(src.x), screen_width), coord_scale (uint(src.y), screen_height));
   vec2 scaled_dst = vec2 (coord_scale (uint(dst.x), screen_width), coord_scale (uint(dst.y), screen_height));
 
-  vec2 scaled_lt = vec2 (line_thickness*100/float(screen_width-1), line_thickness*100/float(screen_height-1));
+  vec2 scaled_lt = vec2 (line_thickness*10/float(screen_width-1), line_thickness*10/float(screen_height-1));
   vec2 clockwise_positions[6] =
       {
          scaled_src + scaled_lt *   src_normal , scaled_dst + scaled_lt *   dst_normal , scaled_dst + scaled_lt * (-dst_normal)
@@ -222,14 +222,14 @@ void arc_draw_fragment(uint component_id)
   }
 
   vec2 normal_intersect = intersect (pos, tangent, gl_FragCoord.xy, normal);
+  float dist = distance (normal_intersect, gl_FragCoord.xy);
 
-  if (normal_intersect.x >= gl_FragCoord.x - 0.5 && normal_intersect.x < gl_FragCoord.x + 0.5
-      && normal_intersect.y >= gl_FragCoord.y -0.5 && normal_intersect.y < gl_FragCoord.y + 0.5)
+  if (dist <= sqrt(line_thickness*line_thickness + line_thickness*line_thickness))
     outColor = vec4 (0.0f, 1.0f, 0.0f, 1.0f);
-  else/* if (abs(t - t1t1) <= 0.001f)
+  else if (abs(t - t1t1) <= 0.001f)
     outColor = vec4 (0.0f, 0.0f, 1.0f, 1.0f);
-    else*/
-    //outColor = vec4((t - t1t1) / (t1t2 - t1t1), 0.0f, 1- ( (t - t1t1) / (t1t2 - t1t1)), 1.0f);
-    discard;
+  else
+    outColor = vec4((t - t1t1) / (t1t2 - t1t1), 0.0f, 1- ( (t - t1t1) / (t1t2 - t1t1)), 1.0f);
+  //discard;
 }
 #endif

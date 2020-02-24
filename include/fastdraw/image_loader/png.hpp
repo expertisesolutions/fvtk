@@ -14,6 +14,8 @@
 
 #include <filesystem>
 
+#include <png.h>
+
 namespace fastdraw { namespace image_loader {
 
 struct png

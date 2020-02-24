@@ -3,8 +3,8 @@
 #extension GL_GOOGLE_include_directive : enable
 
 const int tex_max_size = 4096;
-const int screen_width = 1280;
-const int screen_height = 1000;
+const int screen_width = 2000;
+const int screen_height = 1500;
 const uint num_segments = 20;
 
 //layout(set = 0, binding = 0) uniform texture2D tex[tex_max_size];
