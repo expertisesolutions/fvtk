@@ -226,5 +226,6 @@ alias testsuite :
  [ run tests/rectangle_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 : $(res-path) : : <dependency>compiled-res ]
  [ run tests/arc_box1.cpp ftk /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 /libpng//libpng /libjpeg//libjpeg : $(res-path) $(test-res-path) : : <dependency>compiled-res ]
  [ run tests/font_box1.cpp ftk /fontconfig//fontconfig /libuv//libuv /vulkan//vulkan /x11//x11 /harfbuzz//harfbuzz /freetype2//freetype2 /libpng//libpng /libjpeg//libjpeg : $(res-path) $(test-res-path) : : <dependency>compiled-res ]
+ [ run tests/region_test1.cpp ftk : $(res-path) $(test-res-path) : : <dependency>compiled-res ]
  ;
 
