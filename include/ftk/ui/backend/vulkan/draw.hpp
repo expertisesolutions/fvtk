@@ -217,9 +217,17 @@ record (toplevel_window<Backend>& toplevel
 
   std::cout << "recording " << framebuffer_damaged_regions.size() << " regions" << std::endl;
   // draw damage areas
+
+  std::pair<long, long> resolution_total = {0,0};
+
   int i = 0;
   for (auto&& region : framebuffer_damaged_regions)
   {
+    if (i != 0)
+      break;
+
+    std::cout << "recording region " << i << std::endl;
+
     //auto damaged_command_buffer = damaged_command_buffers[i];
     auto damaged_command_buffer = toplevel.swapchain_info[image_index].render_command;
 
@@ -236,18 +244,25 @@ record (toplevel_window<Backend>& toplevel
     // renderPassInfo.renderArea.offset = {x, y};
     // {
     //   auto w = static_cast<uint32_t>(x) + width <= toplevel.window.voutput.swapChainExtent.width
-    //     ? width : toplevel.window.voutput.swapChainExtent.width - static_cast<uint32_t>(x);
+    //     ? width
+    //     : static_cast<uint32_t>(x) < toplevel.window.voutput.swapChainExtent.width ?
+    //          toplevel.window.voutput.swapChainExtent.width - static_cast<uint32_t>(x)
+    //           : 0;
     //   auto h = static_cast<uint32_t>(y) + height <= toplevel.window.voutput.swapChainExtent.height
-    //     ? height : toplevel.window.voutput.swapChainExtent.height - static_cast<uint32_t>(y);
+    //     ? height
+    //     : static_cast<uint32_t>(y) < toplevel.window.voutput.swapChainExtent.height
+    //           ? toplevel.window.voutput.swapChainExtent.height - static_cast<uint32_t>(y)
+    //           : 0;
     //   renderPassInfo.renderArea.extent = {w/* + image.x*/, h/* + image.y*/};
 
     //   std::cout << "rendering to " << renderPassInfo.renderArea.offset.x
     //             << "x" << renderPassInfo.renderArea.offset.y
     //             << " size " << renderPassInfo.renderArea.extent.width
     //             << "x" << renderPassInfo.renderArea.extent.height << std::endl;
+    //   resolution_total.first += renderPassInfo.renderArea.extent.width;
+    //   resolution_total.second += renderPassInfo.renderArea.extent.height;
     // }
     renderPassInfo.renderPass = toplevel.window.voutput.renderpass;
-    // renderPassInfo.renderArea.offset = {x, y};
     renderPassInfo.renderArea.offset = {0, 0};
     renderPassInfo.renderArea.extent = {toplevel.window.voutput.swapChainExtent.width
                                         , toplevel.window.voutput.swapChainExtent.height};
@@ -272,7 +287,7 @@ record (toplevel_window<Backend>& toplevel
       std::cout << "offset of indirect draw info " << indirect_draw_info.offset << std::endl;
              
       VkWriteDescriptorSet descriptorWrites[2] = {};
-                             
+
       descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       descriptorWrites[0].dstSet = 0;
       descriptorWrites[0].dstBinding = 0;
@@ -303,6 +318,7 @@ record (toplevel_window<Backend>& toplevel
          , 2 /* from 1 */, sizeof(descriptorWrites)/sizeof(descriptorWrites[0]), &descriptorWrites[0]);
 
       uint32_t component_size = toplevel.components.size();
+      std::cout << "component size " << component_size << std::endl;
       vkCmdPushConstants(damaged_command_buffer
                          , indirect_pipeline.pipeline_layout
                          , VK_SHADER_STAGE_VERTEX_BIT
@@ -338,11 +354,11 @@ record (toplevel_window<Backend>& toplevel
 
     vkCmdEndRenderPass(damaged_command_buffer);
 
-    // vkCmdFillBuffer (damaged_command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
-    //                  , sizeof(uint32_t) /* offset */, (5 + 4096) * sizeof(uint32_t), 0);
+    vkCmdFillBuffer (damaged_command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
+                     , sizeof(uint32_t) /* offset */, (5 + 4096) * sizeof(uint32_t), 0);
 
-    // vkCmdFillBuffer (damaged_command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
-    //                  , sizeof(uint32_t) * (6 + 4096) /* offset */, 4096 * sizeof(uint32_t), 0xFFFFFFFF);
+    vkCmdFillBuffer (damaged_command_buffer, toplevel.swapchain_info[image_index].indirect_draw_buffer
+                     , sizeof(uint32_t) * (6 + 4096) /* offset */, 4096 * sizeof(uint32_t), 0xFFFFFFFF);
 
     r = from_result (vkEndCommandBuffer(damaged_command_buffer));
     if (r != vulkan_error_code::success)
@@ -350,6 +366,8 @@ record (toplevel_window<Backend>& toplevel
     
     ++i;
   }
+
+  std::cout << "frag shader calculus will pass through " << resolution_total.first << "x" << resolution_total.second << std::endl;
 
   return {toplevel.swapchain_info[image_index].render_command};
 }
@@ -513,8 +531,8 @@ void draw (toplevel_window<Backend>& toplevel, uint32_t image_index
   auto now3 = std::chrono::high_resolution_clock::now();
   auto diff3 = now3 - now;
   std::cout << "Time waiting fence "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(diff3).count()
-            << "ms" << std::endl;
+            << std::chrono::duration_cast<std::chrono::microseconds>(diff3).count()
+            << "us" << std::endl;
 
 }
 

@@ -27,16 +27,20 @@ in vec4 gl_FragCoord;
 
 void main()
 {
+    return;
   // in bool gl_HelperInvocation
   if (!gl_HelperInvocation)
   {
-  for (uint i = constants.image_length; i != 0; --i)
+    for (uint i = uint(sqrt(constants.image_length)); i != 0; --i)
+    //uint i = 0;
   {
+    return;
     const uint value = i-1;
     if (indirect_draw.buffers_to_draw[value] == 0)
     {
       uint unorm_x = uint(floor(gl_FragCoord.x));
       uint unorm_y = uint(floor(gl_FragCoord.y));
+      //return;
       if (unorm_x >= component_information.array[value].ii_x && unorm_x < component_information.array[value].ii_x + component_information.array[value].ii_w
           && unorm_y >= component_information.array[value].ii_y && unorm_y < component_information.array[value].ii_y + component_information.array[value].ii_h)
       {
@@ -82,6 +86,7 @@ void main()
                 if (next_index > cur_index)
                   next_index = cur_index;
                 break;
+                //return;
               }
             }
           }

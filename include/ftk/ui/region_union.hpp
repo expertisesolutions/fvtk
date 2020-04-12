@@ -93,6 +93,17 @@ struct region_union
     {
       return os << "[x: " << r.x << " y: " << r.y << " w: " << r.w << " h: " << r.h << "]";
     }
+    friend bool operator<(region const& left, region const& right)
+    {
+      return left.x == right.x
+        ? left.y == right.y
+        ? left.w == right.w
+        ? left.h < right.h
+        : left.w < right.w
+        : left.y < right.y
+        : left.x < right.x
+        ;
+    }
   };
 
   void add_region (region r)
@@ -181,6 +192,10 @@ struct region_union
        }
        else
        {
+         // remove active
+         active const a{event_type::left_edge, e.x0, e.w, e.y, e.y, e.h};
+         x_actives.erase (std::lower_bound(x_actives.begin(), x_actives.end(), a));
+
          std::cout << "found event for right_edge " << e << std::endl;
          auto top = active {event_type::left_edge, e.x, e.w, e.y, e.y, e.h};
          auto bottom = active {event_type::right_edge, e.x, e.w, e.y + e.h, e.y, e.h};
@@ -202,36 +217,39 @@ struct region_union
              y_actives.erase (std::remove (y_actives.begin(), y_actives.end(), a), y_actives.end());
            }
          }
-
-         // y_actives has all current intersections (?)
-         for (auto&& i : y_actives)
-         {
-           std::cout << "intersection to " << e << " is " << i << "\n";
-
-           if (i.x > e.x0)
-             std::cout << "intersection is not complete on x" << std::endl;
-         }
-
-         ////////////
-         for (auto current = top_insertion
+         for (auto current = std::next(top_insertion)
                 ;current != bottom_insertion; ++current)
          {
            if (current->type == event_type::left_edge)
            {
-             std::cout << "intersection starts after on y " << *current << std::endl;
+             //std::cout << "intersection starts after on y " << *current << std::endl;
              y_actives.push_back (*current);
            }
-           else
-           {
-             active const a{event_type::left_edge, current->x, current->w, current->y0, current->y0, current->h};
-             std::cout << "intersection finishes before on y " << a << std::endl;
-             //y_actives.erase (std::remove (y_actives.begin(), y_actives.end(), a), y_actives.end());
-           }
+           // else
+           // {
+           //   active const a{event_type::left_edge, current->x, current->w, current->y0, current->y0, current->h};
+           //   std::cout << "intersection finishes before on y " << a << std::endl;
+           //   //y_actives.erase (std::remove (y_actives.begin(), y_actives.end(), a), y_actives.end());
+           // }
          }
 
-         // remove active
-         active const a{event_type::left_edge, e.x0, e.w, e.y, e.y, e.h};
-         x_actives.erase (std::lower_bound(x_actives.begin(), x_actives.end(), a));
+         // y_actives has all current intersections (?)
+         // N intersections
+         std::set<region> regions;
+         for (auto&& i : y_actives)
+         {
+           int const x = std::max (i.x, e.x0)
+             , y = std::max (i.y, e.y)
+             , w = e.x - x
+             , h = std::min (i.y + i.h, e.y + e.h) - y;
+
+           //std::cout << "intersection is " << region{x, y, w, h} << std::endl;
+
+           /* o que fazer na intersecção */
+
+           regions.insert({x, y, w, h});
+         }
+
        }
 
 

@@ -17,7 +17,7 @@
 #include <ftk/ui/backend/uv/timer.hpp>
 #include <ftk/ui/backend/vulkan/draw.hpp>
 #include <ftk/ui/backend/vulkan_backend.ipp>
-
+#include <ftk/ui/region_union.hpp>
 #include <filesystem>
 
 int main(int argc, char* argv[])
@@ -123,7 +123,7 @@ int main(int argc, char* argv[])
     {
       auto now = std::chrono::high_resolution_clock::now();
       std::cout << "drawing " << i++ << std::endl;
-      ftk::ui::backend::vulkan::draw_and_present (w, false);
+      ftk::ui::backend::vulkan::draw_and_present (w, true);
       auto diff = std::chrono::high_resolution_clock::now() - now;
       std::cout << "Time between drawing and presentation "
                 << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
