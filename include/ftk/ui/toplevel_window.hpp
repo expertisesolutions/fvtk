@@ -194,9 +194,9 @@ struct toplevel_window
     , image_pipeline (fastdraw::output::vulkan::create_image_pipeline (window.voutput, 0))
     , sampler_descriptors (window.voutput.device, image_pipeline.descriptorSetLayouts[1])
     , buffer_allocator (window.voutput.device, window.voutput.physical_device
-                        , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-                        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-                        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+                        , /*VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+                            |*/ VK_MEMORY_PROPERTY_HOST_COHERENT_BIT/**/
+                          | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT/**/)
     , swapchain_info ({swapchain_initialize(this->window.voutput.device, empty_image_view)
                        , swapchain_initialize(this->window.voutput.device, empty_image_view)})
   {

@@ -1,0 +1,3 @@
+[submodule "deps/sweep-interval"]
+	path = deps/sweep-interval
+	url = git@github.com:expertisesolutions/sweep-interval

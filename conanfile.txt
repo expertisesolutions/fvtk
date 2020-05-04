@@ -1,5 +1,5 @@
 [requires]
-portable_concurrency/0.10.0@VestniK/stable
+portable_concurrency/0.11.0@VestniK/stable
 
 [generators]
 b2
