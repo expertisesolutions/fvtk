@@ -14,9 +14,10 @@ Then, install boost-build (apt-get install libboost1.67-tools-dev, replace versi
 
 And install conan (https://docs.conan.io/en/1.8/installation.html).
 
-Run conan to bring and build dependencies and run b2 to compile:
+Add the pdeps remote to conan and run install to bring and build dependencies, then run b2 to compile:
 
 ```
+$ conan remote add pdeps https://api.bintray.com/conan/pdeps/deps
 $ conan install . --build
 $ b2 --use-package-manager=conan
 ```
